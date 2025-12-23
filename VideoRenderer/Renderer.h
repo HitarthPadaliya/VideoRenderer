@@ -1,89 +1,99 @@
 #pragma once
 
+#define NOMINMAX
 #include <windows.h>
-#include <d2d1.h>
-#include <dwrite.h>
-#include <wincodec.h>
+
 #include <string>
-#include <memory>
+#include <vector>
+#include <iostream>
 
-#include "ShapeRenderer.h"
+#include <d3d11.h>
+#include <dxgi1_2.h>
+#include <d3dcompiler.h>
 
+#include <d2d1_1.h>
+#include <dwrite.h>
+
+#include <wrl/client.h>
+
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
-#pragma comment(lib, "windowscodecs.lib")
 
 class Renderer {
 public:
     Renderer(UINT width, UINT height);
     ~Renderer();
 
-    // Initialize all Direct2D resources
     bool Initialize();
 
-    // Start/End drawing
+    // Compute pass (software-shape renderer on GPU)
+    void RenderCompute(float timeSeconds, float progress01);
+
+    // Direct2D overlay pass
     void BeginFrame();
     void EndFrame();
 
-    // Clear canvas
-    void Clear(D2D1::ColorF color = D2D1::ColorF::White);
-
-    // Drawing primitives
-    void DrawRectangle(const D2D1_RECT_F& rect, const D2D1::ColorF& color, float strokeWidth = 1.0f);
-    void FillRectangle(const D2D1_RECT_F& rect, const D2D1::ColorF& color);
-    void DrawRoundedRectangle(const D2D1_RECT_F& rect, float radiusX, float radiusY,
-        const D2D1::ColorF& color, float strokeWidth = 1.0f);
-    void FillRoundedRectangle(const D2D1_RECT_F& rect, float radiusX, float radiusY,
-        const D2D1::ColorF& color);
-    void DrawEllipse(const D2D1_POINT_2F& center, float radiusX, float radiusY,
-        const D2D1::ColorF& color, float strokeWidth = 1.0f);
-    void FillEllipse(const D2D1_POINT_2F& center, float radiusX, float radiusY,
-        const D2D1::ColorF& color);
-    void DrawLine(const D2D1_POINT_2F& start, const D2D1_POINT_2F& end,
-        const D2D1::ColorF& color, float strokeWidth = 1.0f);
-
-    // Text rendering with ligatures
     void DrawText(const std::wstring& text, const D2D1_RECT_F& rect,
-        const D2D1::ColorF& color, const std::wstring& fontFamily = L"Cascadia Code",
-        float fontSize = 24.0f, DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL);
+        const D2D1::ColorF& color,
+        const std::wstring& fontFamily = L"Cascadia Code",
+        float fontSize = 24.0f,
+        DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL);
 
-    // Get pixel data for encoding
-    bool GetPixelData(BYTE** ppData, UINT* pStride);
-    void ReleasePixelData();
-
-    bool LockPixelBuffer(PixelBuffer& pixels);
-    void UnlockPixelBuffer();
-    
-    void ClearBuffer(PixelBuffer& buffer, Color col);
+    // CPU readback: packed RGBA half-float (rgbaf16le), tight stride
+    bool GetPixelData(BYTE** ppData, UINT* pStrideBytes);
+    void ReleasePixelData(); // no-op (kept for compatibility)
 
     UINT GetWidth() const { return m_width; }
     UINT GetHeight() const { return m_height; }
 
 private:
-    void CreateBrush(const D2D1::ColorF& color);
-    void CreateTextFormat(const std::wstring& fontFamily, float fontSize,
-        DWRITE_FONT_WEIGHT weight);
+    bool CreateDevices();
+    bool CreateRenderTargets();
+    bool CreateD2DTargets();
+    bool CreateComputePipeline();
+    void CreateTextFormat(const std::wstring& fontFamily, float fontSize, DWRITE_FONT_WEIGHT weight);
 
-    UINT m_width;
-    UINT m_height;
+private:
+    struct CSConstants {
+        float Resolution[2];
+        float Time;
+        float Progress;
+    };
 
-    // COM interfaces
-    ID2D1Factory* m_pD2DFactory;
-    IDWriteFactory* m_pDWriteFactory;
-    IWICImagingFactory* m_pWICFactory;
-    IWICBitmap* m_pWICBitmap;
-    ID2D1RenderTarget* m_pRenderTarget;
+private:
+    UINT m_width = 0;
+    UINT m_height = 0;
 
-    // Current brush and text format (cached)
-    ID2D1SolidColorBrush* m_pCurrentBrush;
-    IDWriteTextFormat* m_pCurrentTextFormat;
-    D2D1::ColorF m_currentBrushColor;
+    bool m_comInitialized = false;
+
+    // D3D11
+    Microsoft::WRL::ComPtr<ID3D11Device> m_d3dDevice;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_d3dContext;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_renderTex;     // RGBA16F (UAV + DXGI surface for D2D)
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_renderUAV;
+
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_stagingTex;    // CPU readback
+
+    // Compute pipeline
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_cs;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_csConstants;
+
+    // D2D / DWrite
+    Microsoft::WRL::ComPtr<ID2D1Factory1> m_d2dFactory;
+    Microsoft::WRL::ComPtr<ID2D1Device> m_d2dDevice;
+    Microsoft::WRL::ComPtr<ID2D1DeviceContext> m_d2dContext;
+    Microsoft::WRL::ComPtr<ID2D1Bitmap1> m_d2dTargetBitmap;
+
+    Microsoft::WRL::ComPtr<IDWriteFactory> m_dwriteFactory;
+    Microsoft::WRL::ComPtr<IDWriteTextFormat> m_currentTextFormat;
     std::wstring m_currentFontFamily;
-    float m_currentFontSize;
-    DWRITE_FONT_WEIGHT m_currentFontWeight;
+    float m_currentFontSize = 24.0f;
+    DWRITE_FONT_WEIGHT m_currentFontWeight = DWRITE_FONT_WEIGHT_NORMAL;
 
-    // Pixel access
-    IWICBitmapLock* m_pBitmapLock;
-
-    ShapeRenderer* m_pShapeRenderer;
+    // CPU packed buffer
+    std::vector<uint8_t> m_cpuPackedRGBAF16;
 };

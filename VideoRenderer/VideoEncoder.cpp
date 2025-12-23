@@ -1,199 +1,182 @@
 #include "VideoEncoder.h"
+
 #include <iostream>
+#include <sstream>
+#include <vector>
+
+static std::wstring Utf8ToWide(const std::string& s) {
+    if (s.empty()) return {};
+    int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)s.size(), nullptr, 0);
+    std::wstring w(len, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)s.size(), w.data(), len);
+    return w;
+}
 
 VideoEncoder::VideoEncoder(const std::string& outputPath, int width, int height, int fps, int bitrate)
-    : m_outputPath(outputPath)
-    , m_width(width)
-    , m_height(height)
-    , m_fps(fps)
-    , m_bitrate(bitrate)
-    , m_frameCount(0)
-    , m_codec(nullptr)
-    , m_codecCtx(nullptr)
-    , m_formatCtx(nullptr)
-    , m_stream(nullptr)
-    , m_swsCtx(nullptr)
-    , m_frame(nullptr)
-    , m_packet(nullptr)
-{
+    : m_outputPath(outputPath),
+    m_width(width),
+    m_height(height),
+    m_fps(fps),
+    m_bitrate(bitrate) {
+    ZeroMemory(&m_pi, sizeof(m_pi));
 }
 
 VideoEncoder::~VideoEncoder() {
-    if (m_packet) av_packet_free(&m_packet);
-    if (m_frame) av_frame_free(&m_frame);
-    if (m_swsCtx) sws_freeContext(m_swsCtx);
-    if (m_codecCtx) avcodec_free_context(&m_codecCtx);
-    if (m_formatCtx) {
-        if (m_formatCtx->pb) avio_closep(&m_formatCtx->pb);
-        avformat_free_context(m_formatCtx);
+    Finalize();
+    CloseHandles();
+}
+
+void VideoEncoder::CloseHandles() {
+    if (m_hChildStdinWrite) {
+        CloseHandle(m_hChildStdinWrite);
+        m_hChildStdinWrite = nullptr;
+    }
+    if (m_hChildStdinRead) {
+        CloseHandle(m_hChildStdinRead);
+        m_hChildStdinRead = nullptr;
+    }
+    if (m_pi.hThread) {
+        CloseHandle(m_pi.hThread);
+        m_pi.hThread = nullptr;
+    }
+    if (m_pi.hProcess) {
+        CloseHandle(m_pi.hProcess);
+        m_pi.hProcess = nullptr;
     }
 }
 
 bool VideoEncoder::Initialize() {
-    // Find NVENC encoder
-    m_codec = avcodec_find_encoder_by_name("h264_nvenc");
-    if (!m_codec) {
-        std::cerr << "h264_nvenc encoder not found" << std::endl;
+    if (m_initialized) return true;
+
+    if (!StartFFmpegProcess()) {
+        std::cerr << "Failed to start ffmpeg process.\n";
         return false;
     }
 
-    // Allocate codec context
-    m_codecCtx = avcodec_alloc_context3(m_codec);
-    if (!m_codecCtx) {
-        std::cerr << "Failed to allocate codec context" << std::endl;
-        return false;
-    }
+    m_initialized = true;
 
-    // Configure codec
-    m_codecCtx->width = m_width;
-    m_codecCtx->height = m_height;
-    m_codecCtx->time_base = AVRational{ 1, m_fps };
-    m_codecCtx->framerate = AVRational{ m_fps, 1 };
-    m_codecCtx->pix_fmt = AV_PIX_FMT_NV12;
-    m_codecCtx->bit_rate = m_bitrate;
-    m_codecCtx->gop_size = m_fps * 2; // 2 second GOP
-
-    // NVENC specific settings
-    av_opt_set(m_codecCtx->priv_data, "preset", "p7", 0);      // Highest quality
-    av_opt_set(m_codecCtx->priv_data, "tune", "hq", 0);        // High quality
-    av_opt_set(m_codecCtx->priv_data, "profile", "high", 0);   // High profile
-    av_opt_set(m_codecCtx->priv_data, "rc", "vbr", 0);         // Variable bitrate
-
-    // Open codec
-    int ret = avcodec_open2(m_codecCtx, m_codec, nullptr);
-    if (ret < 0) {
-        char errBuf[AV_ERROR_MAX_STRING_SIZE];
-        av_strerror(ret, errBuf, sizeof(errBuf));
-        std::cerr << "Failed to open codec: " << errBuf << std::endl;
-        return false;
-    }
-
-    // Allocate output format context
-    avformat_alloc_output_context2(&m_formatCtx, nullptr, nullptr, m_outputPath.c_str());
-    if (!m_formatCtx) {
-        std::cerr << "Failed to allocate format context" << std::endl;
-        return false;
-    }
-
-    // Create stream
-    m_stream = avformat_new_stream(m_formatCtx, m_codec);
-    if (!m_stream) {
-        std::cerr << "Failed to create stream" << std::endl;
-        return false;
-    }
-
-    m_stream->time_base = m_codecCtx->time_base;
-    avcodec_parameters_from_context(m_stream->codecpar, m_codecCtx);
-
-    // Open output file
-    ret = avio_open(&m_formatCtx->pb, m_outputPath.c_str(), AVIO_FLAG_WRITE);
-    if (ret < 0) {
-        char errBuf[AV_ERROR_MAX_STRING_SIZE];
-        av_strerror(ret, errBuf, sizeof(errBuf));
-        std::cerr << "Failed to open output file: " << errBuf << std::endl;
-        return false;
-    }
-
-    // Write header
-    ret = avformat_write_header(m_formatCtx, nullptr);
-    if (ret < 0) {
-        char errBuf[AV_ERROR_MAX_STRING_SIZE];
-        av_strerror(ret, errBuf, sizeof(errBuf));
-        std::cerr << "Failed to write header: " << errBuf << std::endl;
-        return false;
-    }
-
-    // Initialize swscale for BGRA to NV12 conversion
-    m_swsCtx = sws_getContext(
-        m_width, m_height, AV_PIX_FMT_BGRA,
-        m_width, m_height, AV_PIX_FMT_NV12,
-        SWS_BILINEAR, nullptr, nullptr, nullptr
-    );
-    if (!m_swsCtx) {
-        std::cerr << "Failed to create swscale context" << std::endl;
-        return false;
-    }
-
-    // Allocate frame
-    m_frame = av_frame_alloc();
-    if (!m_frame) {
-        std::cerr << "Failed to allocate frame" << std::endl;
-        return false;
-    }
-
-    m_frame->format = AV_PIX_FMT_NV12;
-    m_frame->width = m_width;
-    m_frame->height = m_height;
-
-    ret = av_frame_get_buffer(m_frame, 0);
-    if (ret < 0) {
-        std::cerr << "Failed to allocate frame buffer" << std::endl;
-        return false;
-    }
-
-    // Allocate packet
-    m_packet = av_packet_alloc();
-    if (!m_packet) {
-        std::cerr << "Failed to allocate packet" << std::endl;
-        return false;
-    }
-
-    std::cout << "VideoEncoder initialized: " << m_outputPath << " ("
-        << m_width << "x" << m_height << " @ " << m_fps << " fps)" << std::endl;
-    return true;
-}
-
-bool VideoEncoder::EncodeFrame(const uint8_t* bgraData, int stride) {
-    // Convert BGRA to NV12
-    const uint8_t* srcData[1] = { bgraData };
-    int srcLinesize[1] = { stride };
-
-    sws_scale(m_swsCtx, srcData, srcLinesize, 0, m_height,
-        m_frame->data, m_frame->linesize);
-
-    // Set frame PTS
-    m_frame->pts = m_frameCount++;
-
-    // Send frame to encoder
-    int ret = avcodec_send_frame(m_codecCtx, m_frame);
-    if (ret < 0) {
-        char errBuf[AV_ERROR_MAX_STRING_SIZE];
-        av_strerror(ret, errBuf, sizeof(errBuf));
-        std::cerr << "Failed to send frame: " << errBuf << std::endl;
-        return false;
-    }
-
-    // Receive packets
-    while (ret >= 0) {
-        ret = avcodec_receive_packet(m_codecCtx, m_packet);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-            break;
-        }
-        else if (ret < 0) {
-            char errBuf[AV_ERROR_MAX_STRING_SIZE];
-            av_strerror(ret, errBuf, sizeof(errBuf));
-            std::cerr << "Failed to receive packet: " << errBuf << std::endl;
-            return false;
-        }
-
-        if (!WritePacket(m_packet)) {
-            return false;
-        }
-        av_packet_unref(m_packet);
-    }
+    std::cout
+        << "VideoEncoder initialized (external ffmpeg)\n"
+        << "  Output: " << m_outputPath << "\n"
+        << "  Input:  rgbaf16le " << m_width << "x" << m_height << " @" << m_fps << "fps\n"
+        << "  Encode: hevc_nvenc main10 (CQ=" << m_cq << ")\n";
 
     return true;
 }
 
-bool VideoEncoder::WritePacket(AVPacket* packet) {
-    av_packet_rescale_ts(packet, m_codecCtx->time_base, m_stream->time_base);
-    packet->stream_index = m_stream->index;
+bool VideoEncoder::StartFFmpegProcess() {
+    // Create a pipe for the child process's STDIN.
+    SECURITY_ATTRIBUTES sa{};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = nullptr;
 
-    int ret = av_interleaved_write_frame(m_formatCtx, packet);
-    if (ret < 0) {
-        char errBuf[AV_ERROR_MAX_STRING_SIZE];
-        av_strerror(ret, errBuf, sizeof(errBuf));
-        std::cerr << "Failed to write frame: " << errBuf << std::endl;
+    if (!CreatePipe(&m_hChildStdinRead, &m_hChildStdinWrite, &sa, 0)) {
+        std::cerr << "CreatePipe failed: " << GetLastError() << "\n";
+        return false;
+    }
+
+    // Ensure the write handle is NOT inherited.
+    if (!SetHandleInformation(m_hChildStdinWrite, HANDLE_FLAG_INHERIT, 0)) {
+        std::cerr << "SetHandleInformation failed: " << GetLastError() << "\n";
+        return false;
+    }
+
+    // Build filter chain:
+    // - deband (optional) to reduce contouring
+    // - subtle temporal noise to hide remaining steps (helps gradients post-compression)
+    // - zscale with error diffusion dithering during quantization
+    // - convert to p010le for main10
+    std::ostringstream vf;
+    if (m_enableDeband) {
+        vf << "deband=1thr=0.02:2thr=0.02:3thr=0.02:range=16:blur=1,";
+    }
+    vf << "noise=alls=" << m_noiseStrength << ":allf=t+u,"
+        << "zscale=dither=error_diffusion,"
+        << "format=p010le";
+
+    // IMPORTANT:
+    // - We feed rawvideo on stdin as rgbaf16le (packed RGBA half-float).
+    // - ffmpeg will do conversion + dithering + encode via hevc_nvenc main10.
+    std::ostringstream cmd;
+    cmd
+        << "ffmpeg -y "
+        << "-hide_banner "
+        << "-loglevel info "
+        << "-f rawvideo "
+        << "-pix_fmt rgbaf16le "
+        << "-s " << m_width << "x" << m_height << " "
+        << "-r " << m_fps << " "
+        << "-i - "
+        << "-vf \"" << vf.str() << "\" "
+        << "-c:v hevc_nvenc "
+        << "-profile:v main10 "
+        << "-preset p7 "
+        << "-tune hq "
+        << "-rc vbr "
+        << "-cq " << m_cq << " "
+        << "-rc-lookahead " << m_lookahead << " "
+        << "-pix_fmt p010le "
+        << "\"" << m_outputPath << "\"";
+
+    std::wstring wcmd = Utf8ToWide(cmd.str());
+
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+
+    // Redirect STDIN for the child.
+    si.dwFlags |= STARTF_USESTDHANDLES;
+    si.hStdInput = m_hChildStdinRead;
+
+    // Inherit parent's stdout/stderr so you can see ffmpeg logs in console.
+    si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+    DWORD creationFlags = CREATE_NO_WINDOW; // comment this out if you want a visible console window
+
+    // CreateProcess requires a mutable buffer for the command line.
+    std::vector<wchar_t> mutableCmd(wcmd.begin(), wcmd.end());
+    mutableCmd.push_back(L'\0');
+
+    if (!CreateProcessW(
+        nullptr,
+        mutableCmd.data(),
+        nullptr,
+        nullptr,
+        TRUE, // inherit handles
+        creationFlags,
+        nullptr,
+        nullptr,
+        &si,
+        &m_pi)) {
+        std::cerr << "CreateProcessW failed: " << GetLastError() << "\n";
+        return false;
+    }
+
+    // The child has its own handle now; parent can close the read end.
+    CloseHandle(m_hChildStdinRead);
+    m_hChildStdinRead = nullptr;
+
+    return true;
+}
+
+bool VideoEncoder::EncodeFrame(const uint8_t* rgbaF16Data, int strideBytes) {
+    if (!m_initialized) return false;
+
+    const int expectedStride = m_width * 8; // 4 channels * 16-bit half = 8 bytes/pixel
+    if (strideBytes != expectedStride) {
+        std::cerr << "EncodeFrame: unexpected stride. Expected " << expectedStride
+            << " got " << strideBytes << "\n";
+        return false;
+    }
+
+    const size_t frameBytes = static_cast<size_t>(strideBytes) * static_cast<size_t>(m_height);
+
+    DWORD written = 0;
+    BOOL ok = WriteFile(m_hChildStdinWrite, rgbaF16Data, (DWORD)frameBytes, &written, nullptr);
+    if (!ok || written != frameBytes) {
+        std::cerr << "WriteFile to ffmpeg stdin failed. err=" << GetLastError()
+            << " written=" << written << " expected=" << frameBytes << "\n";
         return false;
     }
 
@@ -201,26 +184,27 @@ bool VideoEncoder::WritePacket(AVPacket* packet) {
 }
 
 bool VideoEncoder::Finalize() {
-    // Flush encoder
-    avcodec_send_frame(m_codecCtx, nullptr);
+    if (!m_initialized) return true;
 
-    int ret;
-    while (true) {
-        ret = avcodec_receive_packet(m_codecCtx, m_packet);
-        if (ret == AVERROR_EOF) {
-            break;
-        }
-        else if (ret < 0) {
-            break;
-        }
-
-        WritePacket(m_packet);
-        av_packet_unref(m_packet);
+    // Close stdin to signal EOF to ffmpeg.
+    if (m_hChildStdinWrite) {
+        CloseHandle(m_hChildStdinWrite);
+        m_hChildStdinWrite = nullptr;
     }
 
-    // Write trailer
-    av_write_trailer(m_formatCtx);
+    // Wait for ffmpeg to exit.
+    if (m_pi.hProcess) {
+        WaitForSingleObject(m_pi.hProcess, INFINITE);
 
-    std::cout << "Encoded " << m_frameCount << " frames successfully" << std::endl;
+        DWORD exitCode = 0;
+        if (GetExitCodeProcess(m_pi.hProcess, &exitCode)) {
+            if (exitCode != 0) {
+                std::cerr << "ffmpeg exited with code " << exitCode << "\n";
+                // still mark as finalized; caller can inspect logs
+            }
+        }
+    }
+
+    m_initialized = false;
     return true;
 }

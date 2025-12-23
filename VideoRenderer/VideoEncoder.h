@@ -1,44 +1,40 @@
 #pragma once
 
 #include <string>
-
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavutil/opt.h>
-#include <libavutil/imgutils.h>
-#include <libswscale/swscale.h>
-}
-
-#pragma comment(lib, "avcodec.lib")
-#pragma comment(lib, "avformat.lib")
-#pragma comment(lib, "avutil.lib")
-#pragma comment(lib, "swscale.lib")
+#include <windows.h>
 
 class VideoEncoder {
 public:
+    // bitrate is kept for API compatibility; this implementation uses CQ-based VBR by default.
     VideoEncoder(const std::string& outputPath, int width, int height, int fps, int bitrate);
+
     ~VideoEncoder();
 
     bool Initialize();
-    bool EncodeFrame(const uint8_t* bgraData, int stride);
+    bool EncodeFrame(const uint8_t* rgbaF16Data, int strideBytes);
     bool Finalize();
 
 private:
-    bool WritePacket(AVPacket* packet);
+    bool StartFFmpegProcess();
+    void CloseHandles();
 
+private:
     std::string m_outputPath;
-    int m_width;
-    int m_height;
-    int m_fps;
-    int m_bitrate;
-    int64_t m_frameCount;
+    int m_width = 0;
+    int m_height = 0;
+    int m_fps = 0;
+    int m_bitrate = 0;
 
-    const AVCodec* m_codec;
-    AVCodecContext* m_codecCtx;
-    AVFormatContext* m_formatCtx;
-    AVStream* m_stream;
-    SwsContext* m_swsCtx;
-    AVFrame* m_frame;
-    AVPacket* m_packet;
+    // Quality controls (reasonable defaults for gradients).
+    int m_cq = 18;                 // lower = better quality/larger file
+    int m_lookahead = 32;
+    int m_noiseStrength = 2;       // subtle temporal noise to reduce banding
+    bool m_enableDeband = true;
+
+    // FFmpeg process plumbing
+    PROCESS_INFORMATION m_pi{};
+    HANDLE m_hChildStdinWrite = nullptr;
+    HANDLE m_hChildStdinRead = nullptr;
+
+    bool m_initialized = false;
 };
