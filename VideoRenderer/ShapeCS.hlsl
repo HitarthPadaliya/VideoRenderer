@@ -19,6 +19,8 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	
 	float3 bgA = float3(0.9294, 0.8314, 0.8314);
 	float3 bgB = float3(0.6824, 0.5294, 0.3373);
+	// float bgA = float3(0, 0, 0);
+	// float bgB = float3(1, 1, 1);
 	float3 col = lerp(bgB, bgA, (1 - uv.x + 0.1) * (uv.y - 0.1));
 	
 	float4 outp = float4(col, 1);

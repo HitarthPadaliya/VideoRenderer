@@ -1,22 +1,38 @@
 #pragma once
 
+#include <d3d11.h>
+#include <d3d11_3.h>   // <-- needed for ID3D11Device3 + D3D11_UNORDERED_ACCESS_VIEW_DESC1
+#include <wrl/client.h>
+
+#include <cstdint>
 #include <string>
-#include <windows.h>
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_d3d11va.h>
+#include <libavutil/opt.h>
+}
 
 class VideoEncoder {
 public:
-    // bitrate is kept for API compatibility; this implementation uses CQ-based VBR by default.
     VideoEncoder(const std::string& outputPath, int width, int height, int fps, int bitrate);
-
     ~VideoEncoder();
 
-    bool Initialize();
-    bool EncodeFrame(const uint8_t* rgbaF16Data, int strideBytes);
+    bool Initialize(ID3D11Device* pD3D11Device);
+    bool EncodeFrame(ID3D11Texture2D* pTexture);
     bool Finalize();
 
 private:
-    bool StartFFmpegProcess();
-    void CloseHandles();
+    bool InitializeHardwareContext(ID3D11Device* pD3D11Device);
+    bool InitializeConverter(ID3D11Device* pD3D11Device);
+    bool InitializeEncoder();
+    bool InitializeMuxer();
+
+    ID3D11Texture2D* ConvertToP010(ID3D11Texture2D* pRGBATexture);
+    AVFrame* WrapD3D11Texture(ID3D11Texture2D* pTexture);
+    bool WritePacket(AVPacket* pkt);
 
 private:
     std::string m_outputPath;
@@ -25,16 +41,40 @@ private:
     int m_fps = 0;
     int m_bitrate = 0;
 
-    // Quality controls (reasonable defaults for gradients).
-    int m_cq = 18;                 // lower = better quality/larger file
+    int m_cq = 18;
     int m_lookahead = 32;
-    int m_noiseStrength = 2;       // subtle temporal noise to reduce banding
-    bool m_enableDeband = true;
 
-    // FFmpeg process plumbing
-    PROCESS_INFORMATION m_pi{};
-    HANDLE m_hChildStdinWrite = nullptr;
-    HANDLE m_hChildStdinRead = nullptr;
+    // FFmpeg objects
+    AVBufferRef* m_hwDeviceCtx = nullptr;
+    AVBufferRef* m_hwFramesCtx = nullptr;
+    const AVCodec* m_codec = nullptr;
+    AVCodecContext* m_codecCtx = nullptr;
+    AVFormatContext* m_formatCtx = nullptr;
+    AVStream* m_stream = nullptr;
 
+    // D3D11 converter (RGBA16F -> P010)
+    Microsoft::WRL::ComPtr<ID3D11Device> m_d3d11Device;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_d3d11Context;
+
+    // D3D11.3 interface for CreateUnorderedAccessView1 + DESC1 (plane-slice UAVs)
+    Microsoft::WRL::ComPtr<ID3D11Device3> m_d3d11Device3;
+
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_convertCS;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_inputSRV;
+
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView1> m_outputUAV_Y;   // plane 0
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView1> m_outputUAV_UV;  // plane 1
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_convertConstants;
+
+    // P010 texture for encoder input
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_p010Texture;
+
+    struct ConvertConstants {
+        UINT Resolution[2];
+        UINT Padding[2];
+    };
+
+    int64_t m_frameCount = 0;
     bool m_initialized = false;
 };

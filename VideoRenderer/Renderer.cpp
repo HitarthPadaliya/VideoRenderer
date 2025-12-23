@@ -1,6 +1,6 @@
 #include "Renderer.h"
 
-#include <d2d1_1helper.h>
+#include <combaseapi.h>
 
 static void PrintHR(const char* what, HRESULT hr) {
     std::cerr << what << " failed: 0x" << std::hex << hr << std::dec << "\n";
@@ -23,6 +23,7 @@ bool Renderer::Initialize() {
         m_comInitialized = true;
     }
     else if (hr == RPC_E_CHANGED_MODE) {
+        // OK for this sample
         m_comInitialized = false;
     }
     else {
@@ -35,9 +36,7 @@ bool Renderer::Initialize() {
     if (!CreateD2DTargets()) return false;
     if (!CreateComputePipeline()) return false;
 
-    m_cpuPackedRGBAF16.resize(static_cast<size_t>(m_width) * static_cast<size_t>(m_height) * 8);
-
-    std::cout << "Renderer initialized (Compute -> D2D overlay -> Readback)\n";
+    std::cout << "Renderer initialized (Compute -> D2D overlay -> Direct GPU encoding)\n";
     return true;
 }
 
@@ -72,7 +71,6 @@ bool Renderer::CreateDevices() {
         return false;
     }
 
-    // D2D factory + DWrite factory
     D2D1_FACTORY_OPTIONS fo{};
 #if defined(_DEBUG)
     fo.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
@@ -99,7 +97,6 @@ bool Renderer::CreateDevices() {
         return false;
     }
 
-    // Create D2D device/context from the D3D device
     Microsoft::WRL::ComPtr<IDXGIDevice> dxgiDevice;
     hr = m_d3dDevice.As(&dxgiDevice);
     if (FAILED(hr)) {
@@ -123,7 +120,6 @@ bool Renderer::CreateDevices() {
 }
 
 bool Renderer::CreateRenderTargets() {
-    // Render texture: must support UAV writes + be shareable via IDXGISurface for D2D
     D3D11_TEXTURE2D_DESC tex{};
     tex.Width = m_width;
     tex.Height = m_height;
@@ -131,7 +127,7 @@ bool Renderer::CreateRenderTargets() {
     tex.ArraySize = 1;
     tex.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     tex.SampleDesc.Count = 1;
-    tex.SampleDesc.Quality = 0; // required for UAV
+    tex.SampleDesc.Quality = 0;
     tex.Usage = D3D11_USAGE_DEFAULT;
     tex.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
     tex.CPUAccessFlags = 0;
@@ -143,7 +139,6 @@ bool Renderer::CreateRenderTargets() {
         return false;
     }
 
-    // UAV for compute shader output
     D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
     uavDesc.Format = tex.Format;
     uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
@@ -151,19 +146,7 @@ bool Renderer::CreateRenderTargets() {
 
     hr = m_d3dDevice->CreateUnorderedAccessView(m_renderTex.Get(), &uavDesc, &m_renderUAV);
     if (FAILED(hr)) {
-        PrintHR("CreateUnorderedAccessView", hr);
-        return false;
-    }
-
-    // Staging texture for CPU readback
-    D3D11_TEXTURE2D_DESC st = tex;
-    st.Usage = D3D11_USAGE_STAGING;
-    st.BindFlags = 0;
-    st.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-
-    hr = m_d3dDevice->CreateTexture2D(&st, nullptr, &m_stagingTex);
-    if (FAILED(hr)) {
-        PrintHR("CreateTexture2D(stagingTex)", hr);
+        PrintHR("CreateUnorderedAccessView(renderUAV)", hr);
         return false;
     }
 
@@ -195,7 +178,6 @@ bool Renderer::CreateD2DTargets() {
 }
 
 bool Renderer::CreateComputePipeline() {
-    // Compile ShapeCS.hlsl from disk
     UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
 #if defined(_DEBUG)
     flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -217,11 +199,10 @@ bool Renderer::CreateComputePipeline() {
         &csBlob,
         &errBlob
     );
-
     if (FAILED(hr)) {
         if (errBlob) {
             std::cerr << "Compute shader compile error:\n"
-                << static_cast<const char*>(errBlob->GetBufferPointer()) << "\n";
+                << (const char*)errBlob->GetBufferPointer() << "\n";
         }
         PrintHR("D3DCompileFromFile(ShapeCS.hlsl)", hr);
         return false;
@@ -233,7 +214,6 @@ bool Renderer::CreateComputePipeline() {
         return false;
     }
 
-    // Constant buffer
     D3D11_BUFFER_DESC bd{};
     bd.ByteWidth = sizeof(CSConstants);
     bd.Usage = D3D11_USAGE_DYNAMIC;
@@ -250,11 +230,10 @@ bool Renderer::CreateComputePipeline() {
 }
 
 void Renderer::RenderCompute(float timeSeconds, float progress01) {
-    // Update constants
     D3D11_MAPPED_SUBRESOURCE mapped{};
     HRESULT hr = m_d3dContext->Map(m_csConstants.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     if (SUCCEEDED(hr)) {
-        CSConstants* c = reinterpret_cast<CSConstants*>(mapped.pData);
+        auto* c = reinterpret_cast<CSConstants*>(mapped.pData);
         c->Resolution[0] = static_cast<float>(m_width);
         c->Resolution[1] = static_cast<float>(m_height);
         c->Time = timeSeconds;
@@ -262,8 +241,8 @@ void Renderer::RenderCompute(float timeSeconds, float progress01) {
         m_d3dContext->Unmap(m_csConstants.Get(), 0);
     }
 
-    // Bind pipeline
     m_d3dContext->CSSetShader(m_cs.Get(), nullptr, 0);
+
     ID3D11Buffer* cbs[] = { m_csConstants.Get() };
     m_d3dContext->CSSetConstantBuffers(0, 1, cbs);
 
@@ -271,17 +250,14 @@ void Renderer::RenderCompute(float timeSeconds, float progress01) {
     UINT initialCounts[] = { 0 };
     m_d3dContext->CSSetUnorderedAccessViews(0, 1, uavs, initialCounts);
 
-    // Dispatch
     UINT gx = (m_width + 15) / 16;
     UINT gy = (m_height + 15) / 16;
     m_d3dContext->Dispatch(gx, gy, 1);
 
-    // Unbind UAV to avoid hazards with D2D reading/writing same resource
-    ID3D11UnorderedAccessView* nullUAV[] = { nullptr };
-    m_d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAV, initialCounts);
+    ID3D11UnorderedAccessView* nullUAVs[] = { nullptr };
+    m_d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAVs, initialCounts);
     m_d3dContext->CSSetShader(nullptr, nullptr, 0);
 
-    // Simple ordering guarantee for this sample
     m_d3dContext->Flush();
 }
 
@@ -332,9 +308,12 @@ void Renderer::CreateTextFormat(const std::wstring& fontFamily, float fontSize, 
     m_currentFontWeight = weight;
 }
 
-void Renderer::DrawText(const std::wstring& text, const D2D1_RECT_F& rect,
-    const D2D1::ColorF& color, const std::wstring& fontFamily,
-    float fontSize, DWRITE_FONT_WEIGHT weight) {
+void Renderer::DrawText(const std::wstring& text,
+    const D2D1_RECT_F& rect,
+    const D2D1::ColorF& color,
+    const std::wstring& fontFamily,
+    float fontSize,
+    DWRITE_FONT_WEIGHT weight) {
     CreateTextFormat(fontFamily, fontSize, weight);
     if (!m_currentTextFormat) return;
 
@@ -352,37 +331,4 @@ void Renderer::DrawText(const std::wstring& text, const D2D1_RECT_F& rect,
         rect,
         brush.Get()
     );
-}
-
-bool Renderer::GetPixelData(BYTE** ppData, UINT* pStrideBytes) {
-    if (!ppData || !pStrideBytes) return false;
-
-    // Copy GPU -> staging
-    m_d3dContext->CopyResource(m_stagingTex.Get(), m_renderTex.Get());
-
-    D3D11_MAPPED_SUBRESOURCE mapped{};
-    HRESULT hr = m_d3dContext->Map(m_stagingTex.Get(), 0, D3D11_MAP_READ, 0, &mapped);
-    if (FAILED(hr)) {
-        PrintHR("Map(stagingTex)", hr);
-        return false;
-    }
-
-    const UINT tightStride = m_width * 8; // RGBA16F = 8 bytes/pixel
-    const uint8_t* src = reinterpret_cast<const uint8_t*>(mapped.pData);
-
-    for (UINT y = 0; y < m_height; ++y) {
-        const uint8_t* srcRow = src + static_cast<size_t>(mapped.RowPitch) * y;
-        uint8_t* dstRow = m_cpuPackedRGBAF16.data() + static_cast<size_t>(tightStride) * y;
-        memcpy(dstRow, srcRow, tightStride);
-    }
-
-    m_d3dContext->Unmap(m_stagingTex.Get(), 0);
-
-    *ppData = m_cpuPackedRGBAF16.data();
-    *pStrideBytes = tightStride;
-    return true;
-}
-
-void Renderer::ReleasePixelData() {
-    // no-op
 }

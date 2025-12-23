@@ -1,7 +1,7 @@
 #include "Application.h"
 
 #include <iostream>
-#include <cmath>
+#include <sstream>
 
 Application::Application(int width, int height, int fps, int durationSeconds)
     : m_width(width),
@@ -20,7 +20,9 @@ bool Application::Initialize(const std::string& outputPath) {
     }
 
     m_encoder = std::make_unique<VideoEncoder>(outputPath, m_width, m_height, m_fps, 0);
-    if (!m_encoder->Initialize()) {
+
+    // Pass D3D11 device to encoder for GPU-to-GPU workflow
+    if (!m_encoder->Initialize(m_renderer->GetDevice())) {
         std::cerr << "Failed to initialize encoder\n";
         return false;
     }
@@ -30,7 +32,6 @@ bool Application::Initialize(const std::string& outputPath) {
 
 void Application::Run() {
     std::cout << "\nRendering " << m_totalFrames << " frames...\n";
-
     for (int frame = 0; frame < m_totalFrames; ++frame) {
         float t = static_cast<float>(frame) / static_cast<float>(m_fps);
         float p = static_cast<float>(frame) / static_cast<float>(m_totalFrames);
@@ -43,16 +44,9 @@ void Application::Run() {
         RenderOverlay(frame);
         m_renderer->EndFrame();
 
-        // 3) Readback + encode
-        BYTE* pData = nullptr;
-        UINT stride = 0;
-        if (!m_renderer->GetPixelData(&pData, &stride)) {
-            std::cerr << "Failed to get pixel data\n";
-            break;
-        }
-
-        if (!m_encoder->EncodeFrame(pData, static_cast<int>(stride))) {
-            std::cerr << "Failed to encode frame\n";
+        // 3) Encode directly from GPU texture (NO CPU READBACK!)
+        if (!m_encoder->EncodeFrame(m_renderer->GetRenderTexture())) {
+            std::cerr << "Failed to encode frame " << frame << "\n";
             break;
         }
 
@@ -70,7 +64,7 @@ void Application::Run() {
 void Application::RenderOverlay(int frameNumber) {
     D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_width - 50.0f, 120.0f);
     m_renderer->DrawText(
-        L"Compute Shader (RGBA16F) -> Direct2D text -> FFmpeg dither -> HEVC NVENC Main10",
+        L"Compute Shader (RGBA16F) -> Direct2D text -> libavcodec NVENC -> HEVC Main10",
         titleRect,
         D2D1::ColorF(0.95f, 0.95f, 0.98f, 1.0f),
         L"Consolas ligaturized v3",
@@ -82,7 +76,10 @@ void Application::RenderOverlay(int frameNumber) {
         L"Frame: " + std::to_wstring(frameNumber) +
         L" / " + std::to_wstring(m_totalFrames);
 
-    D2D1_RECT_F counterRect = D2D1::RectF(50.0f, (float)m_height - 80.0f, (float)m_width - 50.0f, (float)m_height - 20.0f);
+    D2D1_RECT_F counterRect =
+        D2D1::RectF(50.0f, (float)m_height - 80.0f,
+            (float)m_width - 50.0f, (float)m_height - 20.0f);
+
     m_renderer->DrawText(
         frameText,
         counterRect,
