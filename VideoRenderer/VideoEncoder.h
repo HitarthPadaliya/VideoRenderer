@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d11.h>
-#include <d3d11_3.h>   // <-- needed for ID3D11Device3 + D3D11_UNORDERED_ACCESS_VIEW_DESC1
+#include <d3d11_3.h>
 #include <wrl/client.h>
 
 #include <cstdint>
@@ -31,6 +31,10 @@ private:
     bool InitializeMuxer();
 
     ID3D11Texture2D* ConvertToP010(ID3D11Texture2D* pRGBATexture);
+
+    // Creates/updates SRV only when input texture changes.
+    bool EnsureInputSRV(ID3D11Texture2D* pRGBATexture);
+
     AVFrame* WrapD3D11Texture(ID3D11Texture2D* pTexture);
     bool WritePacket(AVPacket* pkt);
 
@@ -52,22 +56,28 @@ private:
     AVFormatContext* m_formatCtx = nullptr;
     AVStream* m_stream = nullptr;
 
-    // D3D11 converter (RGBA16F -> P010)
+    // D3D11
     Microsoft::WRL::ComPtr<ID3D11Device> m_d3d11Device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_d3d11Context;
 
     // D3D11.3 interface for CreateUnorderedAccessView1 + DESC1 (plane-slice UAVs)
     Microsoft::WRL::ComPtr<ID3D11Device3> m_d3d11Device3;
 
+    // Converter resources
     Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_convertCS;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_inputSRV;
 
+    // Cached input SRV (recreated only if input texture changes)
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_inputSRV;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_cachedInputTex;
+
+    // Output UAVs into P010 planes
     Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView1> m_outputUAV_Y;   // plane 0
     Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView1> m_outputUAV_UV;  // plane 1
 
+    // Immutable constants buffer (no per-frame Map/Unmap)
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_convertConstants;
 
-    // P010 texture for encoder input
+    // Output P010 texture for encoder input
     Microsoft::WRL::ComPtr<ID3D11Texture2D> m_p010Texture;
 
     struct ConvertConstants {
