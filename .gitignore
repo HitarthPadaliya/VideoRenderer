@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /VideoRenderer/VideoRenderer.zip
+/VideoRenderer/output.mp4

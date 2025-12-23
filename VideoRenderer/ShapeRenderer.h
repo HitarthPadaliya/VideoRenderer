@@ -3,8 +3,11 @@
 #include <cstdint>
 #include <algorithm>
 #include <cmath>
+#include <d2d1_1.h>
 
-struct Color {
+class Color {
+
+public:
     uint8_t b, g, r, a;  // BGRA format for WIC
 
     Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255)
@@ -19,30 +22,38 @@ struct Color {
             static_cast<uint8_t>(alpha * 255)
         );
     }
+
+    D2D1::ColorF GetD2DColor()
+    {
+        return D2D1::ColorF(r, g, b, a);
+    }
+
+    inline uint32_t PackBGRA()
+    {
+        return
+            (uint32_t(a) << 24) |
+            (uint32_t(r) << 16) |
+            (uint32_t(g) << 8) |
+            uint32_t(b);
+    }
 };
 
-class ShapeRenderer {
-public:
-    ShapeRenderer(uint8_t* pixels, uint32_t width, uint32_t height, uint32_t stride);
+struct PixelBuffer {
+    uint8_t* Data;
+    UINT Width;
+    UINT Height;
+    UINT Stride;
+};
 
-    void Clear(const Color& color);
-    void FillRectangle(float x, float y, float width, float height, const Color& color);
-    void FillRoundedRectangle(float x, float y, float width, float height,
-        float radiusX, float radiusY, const Color& color);
-    void FillEllipse(float centerX, float centerY, float radiusX, float radiusY,
-        const Color& color);
-    void DrawRectangle(float x, float y, float width, float height,
-        const Color& color, float strokeWidth = 1.0f);
-    void DrawEllipse(float centerX, float centerY, float radiusX, float radiusY,
-        const Color& color, float strokeWidth = 1.0f);
 
-private:
-    void SetPixel(int x, int y, const Color& color);
-    void BlendPixel(int x, int y, const Color& color);
-    uint8_t* GetPixelPtr(int x, int y);
+class ShapeRenderer
+{
+    public:
+        uint8_t* m_Data;
+        UINT m_Width;
+        UINT m_Height;
+        UINT m_Stride;
 
-    uint8_t* m_pixels;
-    uint32_t m_width;
-    uint32_t m_height;
-    uint32_t m_stride;
+        void SetPixel(UINT x, UINT y, Color col);
+        void Clear(Color col);
 };

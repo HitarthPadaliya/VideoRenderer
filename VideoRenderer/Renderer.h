@@ -7,6 +7,8 @@
 #include <string>
 #include <memory>
 
+#include "ShapeRenderer.h"
+
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "windowscodecs.lib")
@@ -49,6 +51,11 @@ public:
     bool GetPixelData(BYTE** ppData, UINT* pStride);
     void ReleasePixelData();
 
+    bool LockPixelBuffer(PixelBuffer& pixels);
+    void UnlockPixelBuffer();
+    
+    void ClearBuffer(PixelBuffer& buffer, Color col);
+
     UINT GetWidth() const { return m_width; }
     UINT GetHeight() const { return m_height; }
 
@@ -77,4 +84,6 @@ private:
 
     // Pixel access
     IWICBitmapLock* m_pBitmapLock;
+
+    ShapeRenderer* m_pShapeRenderer;
 };

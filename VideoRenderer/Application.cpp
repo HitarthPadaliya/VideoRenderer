@@ -39,6 +39,25 @@ void Application::Run() {
     std::cout << "\nRendering " << m_totalFrames << " frames..." << std::endl;
 
     for (int frame = 0; frame < m_totalFrames; ++frame) {
+
+
+        PixelBuffer buffer;
+        if (m_renderer->LockPixelBuffer(buffer))
+        {
+            m_renderer->ClearBuffer(buffer, Color(255, 144, 0, 255));
+
+            //BlurRectangle(
+            //    buffer,
+            //    50,
+            //    50,
+            //    450,
+            //    200,
+            //    8
+            //);
+
+            m_renderer->UnlockPixelBuffer();
+        }
+
         // Render frame
         m_renderer->BeginFrame();
         RenderFrame(frame);
@@ -81,7 +100,7 @@ void Application::RenderFrame(int frameNumber) {
     // Clear with animated background color
     float hue = progress * 360.0f;
     D2D1::ColorF bgColor(0.95f, 0.95f, 1.0f - progress * 0.2f);
-    m_renderer->Clear(bgColor);
+    //m_renderer->Clear(bgColor);
 
     // Animated bouncing rectangle
     float rectX = 100 + std::sin(t * 2.0f) * 200.0f;

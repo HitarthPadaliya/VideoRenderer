@@ -33,17 +33,12 @@ bool Renderer::Initialize() {
     HRESULT hr;
 
     // Initialize COM
-    hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-    if (FAILED(hr))
-    {
-        std::cerr << "Failed to initialize COM: 0x" << std::hex << hr << std::hex << std::endl;
-        return false;
-    }
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     // Create Direct2D factory
     hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pD2DFactory);
     if (FAILED(hr)) {
-        std::cerr << "Failed to create Direct2D factory: 0x" << std::hex << hr << std::hex << std::endl;
+        std::cerr << "Failed to create Direct2D factory" << std::endl;
         return false;
     }
 
@@ -261,5 +256,51 @@ void Renderer::ReleasePixelData() {
     if (m_pBitmapLock) {
         m_pBitmapLock->Release();
         m_pBitmapLock = nullptr;
+    }
+}
+
+
+bool Renderer::LockPixelBuffer(PixelBuffer& pixels)
+{
+    WICRect rect = { 0, 0, (INT)m_width, (INT)m_height };
+
+    HRESULT hr = m_pWICBitmap->Lock(&rect, WICBitmapLockWrite, &m_pBitmapLock);
+    if (FAILED(hr))
+    {
+        std::cerr << "Bitmap lock failed: 0x" << std::hex << hr << std::hex << std::endl;
+        return false;
+    }
+
+    UINT size = 0;
+    BYTE* data = nullptr;
+    UINT stride = 0;
+
+    m_pBitmapLock->GetDataPointer(&size, &data);
+    m_pBitmapLock->GetStride(&stride);
+
+    pixels.Data = data;
+    pixels.Width = m_width;
+    pixels.Height = m_height;
+    pixels.Stride = stride;
+
+    return true;
+}
+
+void Renderer::UnlockPixelBuffer()
+{
+    if (m_pBitmapLock) {
+        m_pBitmapLock->Release();
+        m_pBitmapLock = nullptr;
+    }
+}
+
+void Renderer::ClearBuffer(PixelBuffer& buffer, Color col)
+{
+    for (UINT y = 0; y < buffer.Height; ++y)
+    {
+        uint32_t* row =
+            reinterpret_cast<uint32_t*>(buffer.Data + y * buffer.Stride);
+
+        std::fill(row, row + buffer.Width, col.PackBGRA());
     }
 }
