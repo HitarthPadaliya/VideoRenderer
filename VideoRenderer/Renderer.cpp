@@ -250,15 +250,13 @@ void Renderer::RenderCompute(float timeSeconds, float progress01) {
     UINT initialCounts[] = { 0 };
     m_d3dContext->CSSetUnorderedAccessViews(0, 1, uavs, initialCounts);
 
-    UINT gx = (m_width + 15) / 16;
-    UINT gy = (m_height + 15) / 16;
+    UINT gx = (m_width + 31) / 32;
+    UINT gy = (m_height + 31) / 32;
     m_d3dContext->Dispatch(gx, gy, 1);
 
     ID3D11UnorderedAccessView* nullUAVs[] = { nullptr };
     m_d3dContext->CSSetUnorderedAccessViews(0, 1, nullUAVs, initialCounts);
     m_d3dContext->CSSetShader(nullptr, nullptr, 0);
-
-    m_d3dContext->Flush();
 }
 
 void Renderer::BeginFrame() {
