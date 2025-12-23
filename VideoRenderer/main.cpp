@@ -5,8 +5,8 @@
 int main() {
     std::cout << "Compute -> Direct2D -> FFmpeg -> HEVC NVENC Main10\n\n";
 
-    const int WIDTH = 1280;
-    const int HEIGHT = 720;
+    const int WIDTH = 1920;
+    const int HEIGHT = 1080;
     const int FPS = 60;
     const int DURATION_SECONDS = 10;
     const std::string OUTPUT_PATH = "output_hevc_main10.mp4";
