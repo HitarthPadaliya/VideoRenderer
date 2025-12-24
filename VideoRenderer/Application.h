@@ -6,23 +6,29 @@
 #include <memory>
 #include <string>
 
-class Application {
-public:
-    Application(int width, int height, int fps, int durationSeconds);
-    ~Application();
 
-    bool Initialize(const std::string& outputPath);
-    void Run();
+class Application
+{
+    private:
+        uint16_t m_Width = 0;
+        uint16_t m_Height = 0;
+        uint8_t m_FPS = 0;
+        uint32_t m_TotalFrames = 0;
 
-private:
-    void RenderOverlay(int frameNumber);
+        uint8_t m_PrevPercent = 0;
 
-private:
-    int m_width = 0;
-    int m_height = 0;
-    int m_fps = 0;
-    int m_totalFrames = 0;
+        std::unique_ptr<Renderer> m_pRenderer;
+        std::unique_ptr<VideoEncoder> m_pEncoder;
 
-    std::unique_ptr<Renderer> m_renderer;
-    std::unique_ptr<VideoEncoder> m_encoder;
+
+    public:
+        Application(const uint16_t& width, const uint16_t& height, const uint8_t& fps, const uint16_t& duration);
+        ~Application();
+    
+        bool Initialize(const std::string& outputPath);
+        void Run();
+    
+
+    private:
+        void RenderOverlay(const uint32_t& frameNumber);
 };

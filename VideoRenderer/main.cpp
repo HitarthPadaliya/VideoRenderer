@@ -3,24 +3,27 @@
 #include <iostream>
 #include <string>
 
-int main() {
-    std::cout << "Compute -> Direct2D -> FFmpeg -> HEVC NVENC Main10\n\n";
 
-    const int WIDTH = 1920;
-    const int HEIGHT = 1080;
-    const int FPS = 60;
-    const int DURATION_SECONDS = 10;
-    const std::string OUTPUT_PATH = "output_hevc_main10.mp4";
+int main()
+{
+    std::cout << "=== VIDEO RENDERER ===\n\n";
 
-    Application app(WIDTH, HEIGHT, FPS, DURATION_SECONDS);
-    if (!app.Initialize(OUTPUT_PATH)) {
+    const uint16_t width = 3840;
+    const uint16_t height = 2160;
+    const uint8_t fps = 120;
+    const uint16_t duration = 10;        // in seconds
+    const std::string output = "../bin/output.mp4";
+
+    Application app(width, height, fps, duration);
+    if (!app.Initialize(output))
+    {
         std::cerr << "Failed to initialize application\n";
-        return 1;
+        return -1;
     }
 
     app.Run();
 
-    std::cout << "\nVideo saved to: " << OUTPUT_PATH << "\n";
+    std::cout << "\nVideo saved to: " << output << "\n";
     std::cout << "Press Enter to exit...\n";
     std::cin.get();
     return 0;

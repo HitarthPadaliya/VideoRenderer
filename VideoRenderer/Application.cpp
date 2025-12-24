@@ -3,26 +3,34 @@
 #include <iostream>
 #include <sstream>
 
-Application::Application(int width, int height, int fps, int durationSeconds)
-    : m_width(width),
-    m_height(height),
-    m_fps(fps),
-    m_totalFrames(fps* durationSeconds) {
-}
+Application::Application
+(
+    const uint16_t& width,
+    const uint16_t& height,
+    const uint8_t& fps,
+    const uint16_t& duration
+)
+    : m_Width(width)
+    , m_Height(height)
+    , m_FPS(fps)
+    , m_TotalFrames(fps * duration)
+{}
 
 Application::~Application() {}
 
-bool Application::Initialize(const std::string& outputPath) {
-    m_renderer = std::make_unique<Renderer>(m_width, m_height);
-    if (!m_renderer->Initialize()) {
+
+bool Application::Initialize(const std::string& outputPath)
+{
+    m_pRenderer = std::make_unique<Renderer>(m_Width, m_Height);
+    if (!m_pRenderer->Initialize())
+    {
         std::cerr << "Failed to initialize renderer\n";
         return false;
     }
 
-    m_encoder = std::make_unique<VideoEncoder>(outputPath, m_width, m_height, m_fps, 0);
-
-    // Pass D3D11 device to encoder for GPU-to-GPU workflow
-    if (!m_encoder->Initialize(m_renderer->GetDevice())) {
+    m_pEncoder = std::make_unique<VideoEncoder>(outputPath, m_Width, m_Height, m_FPS, 0);
+    if (!m_pEncoder->Initialize(m_pRenderer->GetDevice()))
+    {
         std::cerr << "Failed to initialize encoder\n";
         return false;
     }
@@ -30,57 +38,67 @@ bool Application::Initialize(const std::string& outputPath) {
     return true;
 }
 
-void Application::Run() {
-    std::cout << "\nRendering " << m_totalFrames << " frames...\n";
-    for (int frame = 0; frame < m_totalFrames; ++frame) {
-        float t = static_cast<float>(frame) / static_cast<float>(m_fps);
-        float p = static_cast<float>(frame) / static_cast<float>(m_totalFrames);
+void Application::Run()
+{
+    std::cout << "\nRendering " << m_TotalFrames << " frames...\n";
+    for (int frame = 1; frame <= m_TotalFrames; ++frame)
+    {
+        float t = static_cast<float>(frame) / static_cast<float>(m_FPS);
+        float p = static_cast<float>(frame) / static_cast<float>(m_TotalFrames);
 
-        // 1) Compute shader draws shapes into RGBA16F texture
-        m_renderer->RenderCompute(t, p);
+        m_pRenderer->RenderCompute(t, p);
 
-        // 2) Direct2D draws text on top
-        m_renderer->BeginFrame();
+        m_pRenderer->BeginFrame();
         RenderOverlay(frame);
-        m_renderer->EndFrame();
+        m_pRenderer->EndFrame();
 
-        // 3) Encode directly from GPU texture (NO CPU READBACK!)
-        if (!m_encoder->EncodeFrame(m_renderer->GetRenderTexture())) {
+        if (!m_pEncoder->EncodeFrame(m_pRenderer->GetRenderTexture()))
+        {
             std::cerr << "Failed to encode frame " << frame << "\n";
             break;
         }
 
-        if ((frame + 1) % 30 == 0 || frame == m_totalFrames - 1) {
-            float progress = (frame + 1) * 100.0f / m_totalFrames;
-            std::cout << "Progress: " << (frame + 1) << "/" << m_totalFrames
-                << " (" << progress << "%)\n";
+        uint8_t percent = (float)frame / m_TotalFrames * 100;
+        if (percent != m_PrevPercent)
+        {
+            std::cout << "\r";
+            std::cout << frame << '/' << m_TotalFrames << ' ' << (int)percent << "%\t[";
+            for (uint8_t p = 1; p <= percent; ++p)
+                std::cout << (char)254u;
+            for (uint8_t p = percent; p < 100; ++p)
+                std::cout << ' ';
+            std::cout << "]";
+
+            m_PrevPercent = percent;
         }
     }
 
-    m_encoder->Finalize();
+    std::cout << '\n';
+    m_pEncoder->Finalize();
     std::cout << "\nVideo rendering complete!\n";
 }
 
-void Application::RenderOverlay(int frameNumber) {
-    D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_width - 50.0f, 120.0f);
-    m_renderer->DrawText(
+
+void Application::RenderOverlay(const uint32_t& frameNumber)
+{
+    D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_Width - 50.0f, 120.0f);
+    m_pRenderer->DrawText
+    (
         L"Compute Shader (RGBA16F) -> Direct2D text -> libavcodec NVENC -> HEVC Main10",
         titleRect,
-        D2D1::ColorF(0.95f, 0.95f, 0.98f, 1.0f),
+        D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f),
         L"Consolas ligaturized v3",
         32.0f,
         DWRITE_FONT_WEIGHT_BOLD
     );
 
-    std::wstring frameText =
-        L"Frame: " + std::to_wstring(frameNumber) +
-        L" / " + std::to_wstring(m_totalFrames);
+    std::wstring frameText
+        = L"Frame: " + std::to_wstring(frameNumber) + L" / " + std::to_wstring(m_TotalFrames);
+    D2D1_RECT_F counterRect
+        = D2D1::RectF(50.0f, (float)m_Height - 80.0f, (float)m_Width - 50.0f, (float)m_Height - 20.0f);
 
-    D2D1_RECT_F counterRect =
-        D2D1::RectF(50.0f, (float)m_height - 80.0f,
-            (float)m_width - 50.0f, (float)m_height - 20.0f);
-
-    m_renderer->DrawText(
+    m_pRenderer->DrawText
+    (
         frameText,
         counterRect,
         D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f),
