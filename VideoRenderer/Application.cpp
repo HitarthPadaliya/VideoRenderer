@@ -13,7 +13,7 @@ Application::Application
     : m_Width(width)
     , m_Height(height)
     , m_FPS(fps)
-    , m_TotalFrames(fps * duration)
+    , m_TotalFrames((uint32_t)fps * duration)
 {}
 
 Application::~Application() {}

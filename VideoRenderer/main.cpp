@@ -8,10 +8,10 @@ int main()
 {
     std::cout << "=== VIDEO RENDERER ===\n\n";
 
-    const uint16_t width = 3840;
-    const uint16_t height = 2160;
-    const uint8_t fps = 120;
-    const uint16_t duration = 10;        // in seconds
+    const uint16_t width = 1920;
+    const uint16_t height = 1080;
+    const uint8_t fps = 60;
+    const uint16_t duration = 5;        // in seconds
     const std::string output = "../bin/output.mp4";
 
     Application app(width, height, fps, duration);

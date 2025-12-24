@@ -195,6 +195,8 @@ cbuffer Constants : register(b0)
     uint2 Padding;
 };
 
+#define INPUT_IS_LINEAR 0
+
 float3 LinearToRec709(float3 x)
 {
     x = max(x, 0.0.xxx);
@@ -203,26 +205,47 @@ float3 LinearToRec709(float3 x)
     return (x < 0.018) ? a : b;
 }
 
-float3 RGBToYCbCr709_Limited(float3 rgbLinear)
+float3 ToRec709Prime(float3 rgb)
 {
-    float3 rgb = saturate(rgbLinear);
-    float3 rgbp = LinearToRec709(rgb);
-
-    float Y  = 0.2126 * rgbp.r + 0.7152 * rgbp.g + 0.0722 * rgbp.b;
-    float Cb = (rgbp.b - Y) / 1.8556;
-    float Cr = (rgbp.r - Y) / 1.5748;
-
-    float Yl  = (16.0/255.0)  + (219.0/255.0) * Y;
-    float Cbl = (128.0/255.0) + (224.0/255.0) * Cb;
-    float Crl = (128.0/255.0) + (224.0/255.0) * Cr;
-
-    return float3(saturate(Yl), saturate(Cbl), saturate(Crl));
+#if INPUT_IS_LINEAR
+    return LinearToRec709(rgb);
+#else
+    return rgb; // already R'G'B'
+#endif
 }
 
-uint PackP010_10bit(float v01)
+uint QuantizeY10_Limited(precise float y01)
 {
-    uint v10 = (uint)round(saturate(v01) * 1023.0);
-    return (v10 << 6); // P010 stores sample in bits 15:6
+    precise float v = saturate(y01) * 876.0 + 64.0;
+    uint q = (uint)floor(v + 0.5);
+    return clamp(q, 64u, 940u);
+}
+
+uint QuantizeC10_Limited(precise float cMinusHalfToHalf)
+{
+    precise float c = clamp(cMinusHalfToHalf, -0.5, 0.5);
+    precise float v = c * 896.0 + 512.0;
+    uint q = (uint)floor(v + 0.5);
+    return clamp(q, 64u, 960u);
+}
+
+uint PackP010_10bitCode(uint code10)
+{
+    return (code10 & 1023u) << 6;
+}
+
+void RGBToYCbCr709_Prime(float3 rgbIn, out precise float Y, out precise float Cb, out precise float Cr)
+{
+    precise float3 rgbp = saturate(ToRec709Prime(rgbIn));
+
+    const precise float Kr = 0.2126;
+    const precise float Kb = 0.0722;
+    const precise float Kg = 1.0 - Kr - Kb;
+
+    Y = Kr * rgbp.r + Kg * rgbp.g + Kb * rgbp.b;
+
+    Cb = (rgbp.b - Y) / (2.0 * (1.0 - Kb)); // == / 1.8556
+    Cr = (rgbp.r - Y) / (2.0 * (1.0 - Kr)); // == / 1.5748
 }
 
 [numthreads(32, 32, 1)]
@@ -233,23 +256,34 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
     if (x >= Resolution.x || y >= Resolution.y)
         return;
 
-    float3 ycc = RGBToYCbCr709_Limited(InputTexture[uint2(x,y)].rgb);
-    OutY[uint2(x,y)] = PackP010_10bit(ycc.x);
+    float3 rgb = InputTexture[uint2(x, y)].rgb;
+
+    precise float Yp, Cb, Cr;
+    RGBToYCbCr709_Prime(rgb, Yp, Cb, Cr);
+
+    OutY[uint2(x, y)] = PackP010_10bitCode(QuantizeY10_Limited(Yp));
 
     if (((x & 1) == 0) && ((y & 1) == 0))
     {
         uint x1 = min(x + 1, Resolution.x - 1);
         uint y1 = min(y + 1, Resolution.y - 1);
 
-        float3 ycc00 = RGBToYCbCr709_Limited(InputTexture[uint2(x,  y )].rgb);
-        float3 ycc10 = RGBToYCbCr709_Limited(InputTexture[uint2(x1, y )].rgb);
-        float3 ycc01 = RGBToYCbCr709_Limited(InputTexture[uint2(x,  y1)].rgb);
-        float3 ycc11 = RGBToYCbCr709_Limited(InputTexture[uint2(x1, y1)].rgb);
+        precise float Y00, U00, V00;
+        precise float Y10, U10, V10;
+        precise float Y01, U01, V01;
+        precise float Y11, U11, V11;
 
-        float u = (ycc00.y + ycc10.y + ycc01.y + ycc11.y) * 0.25;
-        float v = (ycc00.z + ycc10.z + ycc01.z + ycc11.z) * 0.25;
+        RGBToYCbCr709_Prime(InputTexture[uint2(x,  y )].rgb, Y00, U00, V00);
+        RGBToYCbCr709_Prime(InputTexture[uint2(x1, y )].rgb, Y10, U10, V10);
+        RGBToYCbCr709_Prime(InputTexture[uint2(x,  y1)].rgb, Y01, U01, V01);
+        RGBToYCbCr709_Prime(InputTexture[uint2(x1, y1)].rgb, Y11, U11, V11);
 
-        OutUV[uint2(x >> 1, y >> 1)] = uint2(PackP010_10bit(u), PackP010_10bit(v));
+        precise float uAvg = (U00 + U10 + U01 + U11) * 0.25;
+        precise float vAvg = (V00 + V10 + V01 + V11) * 0.25;
+
+        OutUV[uint2(x >> 1, y >> 1)] =
+            uint2(PackP010_10bitCode(QuantizeC10_Limited(uAvg)),
+                  PackP010_10bitCode(QuantizeC10_Limited(vAvg)));
     }
 }
 )";
