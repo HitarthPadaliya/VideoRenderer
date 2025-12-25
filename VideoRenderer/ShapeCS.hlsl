@@ -209,17 +209,19 @@ float4 DrawRoundedRect(uint2 pix, float2 center, float2 size, float r, float4 co
 		
 		float wt = 0;
 		
-		for (int y = -blurRad; y <= blurRad; ++y)
+		for (int y = -blurRad; y <= blurRad; y += 4)
 		{
-			for (int x = -blurRad; x <= blurRad; ++x)
+			for (int x = -blurRad; x <= blurRad; x += 4)
 			{
 				float distance = x * x + y * y;
-				wt = exp(-distance / sigma2) / (PI * sigma2);
+				wt = exp(-distance / sigma2);
 				
 				blur += BackgroundImg.Load(int3(pix + float2(x, y), 0)) * wt;
 				sum += wt;
 			}
 		}
+		
+		blur /= sum;
 		
 		color.a *= mask;
 		outp = AlphaBlend(blur, color);
