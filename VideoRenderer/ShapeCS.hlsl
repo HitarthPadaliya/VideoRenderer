@@ -126,7 +126,7 @@ struct RoundedRect
 	float4 color;
 };
 
-Texture2D<float4> BackgroundTexture : register(t0);
+Texture2D<float4> BackgroundImg : register(t0);
 
 RWTexture2D<float4> Output : register(u0);
 
@@ -200,9 +200,29 @@ float4 DrawRoundedRect(uint2 pix, float2 center, float2 size, float r, float4 co
 	float mask = RoundedRectMask(pix, center, size, r);
 	if (mask > 0.0)
 	{
-		float4 cCol = color;
-		cCol.a *= mask;
-		outp = AlphaBlend(outp, cCol);
+		float4 blur = float4(0, 0, 0, 0);
+		float blurRad = 100;
+		
+		float sum = 0;
+		float sigma = blurRad / 3;
+		float sigma2 = 2 * sigma * sigma;
+		
+		float wt = 0;
+		
+		for (int y = -blurRad; y <= blurRad; ++y)
+		{
+			for (int x = -blurRad; x <= blurRad; ++x)
+			{
+				float distance = x * x + y * y;
+				wt = exp(-distance / sigma2) / (PI * sigma2);
+				
+				blur += BackgroundImg.Load(int3(pix + float2(x, y), 0)) * wt;
+				sum += wt;
+			}
+		}
+		
+		color.a *= mask;
+		outp = AlphaBlend(blur, color);
 	}
 	
 	return outp;
@@ -212,10 +232,9 @@ float4 DrawCircle(uint2 pix, float2 center, float r, float4 color, float4 outp)
 {
 	float mask = CircleMask(pix, center, r);
 	if (mask > 0.0)
-	{
-		float4 cCol = color;
-		cCol.a *= mask;
-		outp = AlphaBlend(outp, cCol);
+	{	
+		color.a *= mask;
+		outp = AlphaBlend(outp, color);
 	}
 	
 	return outp;
@@ -236,7 +255,7 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	//float3 col = lerp(bgB, bgA, (1 - uv.x + 0.1) * (uv.y - 0.1));
 	//float4 outp = float4(col, 1);
 	
-	float4 outp = BackgroundTexture.Load(uint3(tid.xy, 0));
+	float4 outp = BackgroundImg.Load(uint3(tid.xy, 0));
 	
 	float2 size1 = float2(1920, 1080);
 	float2 size2 = float2(2800, 1600);
@@ -244,6 +263,7 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	float2 rcenter = Resolution / 2;
 	
 	float2 rsize = Time < 1 ? lerp(size1, size2, AEDoubleBackLerp(Time)) : size2;
+	// float2 rsize = size1;
 	
 	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
 	float2 topLeft = rcenter - rsize / 2;
