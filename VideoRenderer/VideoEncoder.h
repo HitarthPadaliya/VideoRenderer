@@ -34,7 +34,7 @@ class VideoEncoder
         uint32_t m_Bitrate  = 0;
 
         int m_CQ = 18;
-        int m_Lookahead = 32;
+        int m_Lookahead = 0;
 
         AVBufferRef* m_pHWDeviceCtx      = nullptr;
         AVBufferRef* m_pHWFramesCtx      = nullptr;

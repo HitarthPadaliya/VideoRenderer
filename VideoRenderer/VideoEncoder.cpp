@@ -551,7 +551,8 @@ bool VideoEncoder::EncodeFrame(ID3D11Texture2D* pRGBATexture)
     }
 
     AVFrame* frame = WrapD3D11Texture(pP010Texture);
-    if (!frame) {
+    if (!frame)
+    {
         std::cerr << "Failed to wrap D3D11 texture\n";
         return false;
     }

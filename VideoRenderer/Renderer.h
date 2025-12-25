@@ -23,6 +23,7 @@ struct CSConstants
     float Resolution[2];
     float Time;
     float Progress;
+    float rSize[2];
 };
 
 

@@ -41,7 +41,7 @@ bool Application::Initialize(const std::string& outputPath)
 void Application::Run()
 {
     std::cout << "\nRendering " << m_TotalFrames << " frames...\n";
-    for (int frame = 1; frame <= m_TotalFrames; ++frame)
+    for (int frame = 0; frame < m_TotalFrames; ++frame)
     {
         float t = static_cast<float>(frame) / static_cast<float>(m_FPS);
         float p = static_cast<float>(frame) / static_cast<float>(m_TotalFrames);
@@ -49,7 +49,7 @@ void Application::Run()
         m_pRenderer->RenderCompute(t, p);
 
         m_pRenderer->BeginFrame();
-        RenderOverlay(frame);
+        RenderOverlay(frame + 1);
         m_pRenderer->EndFrame();
 
         if (!m_pEncoder->EncodeFrame(m_pRenderer->GetRenderTexture()))
@@ -58,19 +58,15 @@ void Application::Run()
             break;
         }
 
-        uint8_t percent = (float)frame / m_TotalFrames * 100;
-        if (percent != m_PrevPercent)
-        {
-            std::cout << "\r";
-            std::cout << frame << '/' << m_TotalFrames << ' ' << (int)percent << "%\t[";
-            for (uint8_t p = 1; p <= percent; ++p)
-                std::cout << (char)254u;
-            for (uint8_t p = percent; p < 100; ++p)
-                std::cout << ' ';
-            std::cout << "]";
-
-            m_PrevPercent = percent;
-        }
+        uint8_t percent = (float)(frame + 1) / m_TotalFrames * 100;
+        
+        std::cout << "\r";
+        std::cout << frame + 1 << '/' << m_TotalFrames << ' ' << (int)percent << "%  \t[";
+        for (uint8_t p = 1; p <= percent; ++p)
+            std::cout << (char)254u;
+        for (uint8_t p = percent; p < 100; ++p)
+            std::cout << ' ';
+        std::cout << "]";
     }
 
     std::cout << '\n';

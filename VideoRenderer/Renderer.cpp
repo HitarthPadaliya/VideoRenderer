@@ -257,7 +257,7 @@ bool Renderer::CreateComputePipeline()
 
 void Renderer::RenderCompute(const float& time, const float& progress01)
 {
-    D3D11_MAPPED_SUBRESOURCE mapped{};
+    D3D11_MAPPED_SUBRESOURCE mapped {};
     HRESULT hr = m_pD3DContext->Map(m_pCSConstants.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     if (SUCCEEDED(hr))
     {
@@ -266,6 +266,8 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
         c->Resolution[1]    = static_cast<float>(m_Height);
         c->Time             = time;
         c->Progress         = progress01;
+        c->rSize[0]         = 1920;
+        c->rSize[1]         = 1080;
         m_pD3DContext->Unmap(m_pCSConstants.Get(), 0);
     }
 
