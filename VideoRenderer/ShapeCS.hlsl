@@ -115,7 +115,6 @@ cbuffer CSConstants : register(b0)
 	float2 Resolution;
 	float Time;			// seconds
 	float Progress;		// 0..1
-	float2 rSize;
 };
 
 struct RoundedRect
@@ -126,6 +125,8 @@ struct RoundedRect
 	float feather;
 	float4 color;
 };
+
+Texture2D<float4> BackgroundTexture : register(t0);
 
 RWTexture2D<float4> Output : register(u0);
 
@@ -230,10 +231,12 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	float2 p = float2(tid.xy);
 	float2 uv = (p + 0.5) / Resolution;
 	
-	float3 bgA = float3(0.9294, 0.8314, 0.8314);
-	float3 bgB = float3(0.6824, 0.5294, 0.3373);
-	float3 col = lerp(bgB, bgA, (1 - uv.x + 0.1) * (uv.y - 0.1));
-	float4 outp = float4(col, 1);
+	//float3 bgA = float3(0.9294, 0.8314, 0.8314);
+	//float3 bgB = float3(0.6824, 0.5294, 0.3373);
+	//float3 col = lerp(bgB, bgA, (1 - uv.x + 0.1) * (uv.y - 0.1));
+	//float4 outp = float4(col, 1);
+	
+	float4 outp = BackgroundTexture.Load(uint3(tid.xy, 0));
 	
 	float2 size1 = float2(1920, 1080);
 	float2 size2 = float2(2800, 1600);
@@ -242,7 +245,7 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	
 	float2 rsize = Time < 1 ? lerp(size1, size2, AEDoubleBackLerp(Time)) : size2;
 	
-	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100, float4(0.0863, 0.0863, 0.0863, 0.7), outp);
+	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
 	float2 topLeft = rcenter - rsize / 2;
 	outp = DrawCircle(tid.xy, topLeft + 100, 25, float4(1, 0.3686, 0.3412, 1), outp);
 	topLeft.x += 75;

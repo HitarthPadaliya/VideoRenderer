@@ -1,6 +1,7 @@
 #include "Renderer.h"
 
 #include <combaseapi.h>
+#include <WICTextureLoader.h>
 
 
 static void PrintHR(const char* what, HRESULT hr)
@@ -41,6 +42,7 @@ bool Renderer::Initialize()
     if (!CreateRenderTargets())     return false;
     if (!CreateD2DTargets())        return false;
     if (!CreateComputePipeline())   return false;
+    if (!LoadBackgroundTexture())   return false;
 
     std::cout << "Renderer initialized\n";
     return true;
@@ -266,8 +268,6 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
         c->Resolution[1]    = static_cast<float>(m_Height);
         c->Time             = time;
         c->Progress         = progress01;
-        c->rSize[0]         = 1920;
-        c->rSize[1]         = 1080;
         m_pD3DContext->Unmap(m_pCSConstants.Get(), 0);
     }
 
@@ -275,6 +275,9 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
 
     ID3D11Buffer* cbs[] = { m_pCSConstants.Get() };
     m_pD3DContext->CSSetConstantBuffers(0, 1, cbs);
+
+    ID3D11ShaderResourceView* srvs[] = { m_pBackgroundSRV.Get() };
+    m_pD3DContext->CSSetShaderResources(0, 1, srvs);
 
     ID3D11UnorderedAccessView* uavs[] = { m_pRenderUAV.Get() };
     UINT initialCounts[] = { 0 };
@@ -284,8 +287,12 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
     UINT gy = (m_Height + 31) / 32;
     m_pD3DContext->Dispatch(gx, gy, 1);
 
+    ID3D11ShaderResourceView* nullSRV[] = { nullptr };
+    m_pD3DContext->CSSetShaderResources(0, 1, nullSRV);
+
     ID3D11UnorderedAccessView* nullUAVs[] = { nullptr };
     m_pD3DContext->CSSetUnorderedAccessViews(0, 1, nullUAVs, initialCounts);
+
     m_pD3DContext->CSSetShader(nullptr, nullptr, 0);
 }
 
@@ -375,4 +382,32 @@ void Renderer::DrawText
         rect,
         brush.Get()
     );
+}
+
+bool Renderer::LoadBackgroundTexture()
+{
+    Microsoft::WRL::ComPtr<ID3D11Resource> texRes;
+    HRESULT hr = DirectX::CreateWICTextureFromFile
+    (
+        m_pD3DDevice.Get(),
+        m_pD3DContext.Get(),
+        L"../in/bg.png",
+        texRes.GetAddressOf(),
+        m_pBackgroundSRV.GetAddressOf()
+    );
+
+    if (FAILED(hr))
+    {
+        PrintHR("CreateWICTextureFromFile(bg.png)", hr);
+        return false;
+    }
+
+    hr = texRes.As(&m_pBackgroundTex);
+    if (FAILED(hr))
+    {
+        PrintHR("Query ID3D11Texture2D", hr);
+        return false;
+    }
+
+    return true;
 }

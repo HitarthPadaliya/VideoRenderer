@@ -23,7 +23,6 @@ struct CSConstants
     float Resolution[2];
     float Time;
     float Progress;
-    float rSize[2];
 };
 
 
@@ -49,6 +48,9 @@ class Renderer
 
         Microsoft::WRL::ComPtr<IDWriteFactory> m_pDWriteFactory;
         Microsoft::WRL::ComPtr<IDWriteTextFormat> m_pCurrentTextFormat;
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pBackgroundTex;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBackgroundSRV;
 
         std::wstring m_CurrentFontFamily;
         float m_CurrentFontSize = 24.0f;
@@ -89,6 +91,7 @@ class Renderer
         bool CreateRenderTargets();
         bool CreateD2DTargets();
         bool CreateComputePipeline();
+        bool LoadBackgroundTexture();
         void CreateTextFormat(const std::wstring& fontFamily, const float& fontSize,
             const DWRITE_FONT_WEIGHT& weight);
 };
