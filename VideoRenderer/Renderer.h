@@ -23,6 +23,8 @@ struct CSConstants
     float Resolution[2];
     float Time;
     float Progress;
+    float rSize[2];
+    float rSizeInitial[2];
 };
 
 
@@ -52,8 +54,17 @@ class Renderer
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pBackgroundTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBackgroundSRV;
 
+        Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pHeaderLayout;
+        Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pCodeLayout;
+
+        D2D1_POINT_2F m_HeaderPosition;
+        std::wstring m_Code;
+        bool changed = false;
+        D2D1_POINT_2F m_CodePosition;
+        D2D1_POINT_2F m_CodeSize;
+
         std::wstring m_CurrentFontFamily;
-        float m_CurrentFontSize = 24.0f;
+        float m_CurrentFontSize = 72.0f;
         DWRITE_FONT_WEIGHT m_CurrentFontWeight = DWRITE_FONT_WEIGHT_NORMAL;
 
 
@@ -61,20 +72,48 @@ class Renderer
         Renderer(const uint16_t& width, const uint16_t& height);
         ~Renderer();
     
-        bool Initialize();
+        bool Initialize(const std::wstring& header, const std::wstring& code);
 
         void RenderCompute(const float& time, const float& progress01);
     
         void BeginFrame();
         void EndFrame();
     
+        void DrawHeader();
+        void DrawCode();
+
         void DrawText
         (
             const std::wstring& text,
             const D2D1_RECT_F& rect,
             const D2D1::ColorF& color,
             const std::wstring& fontFamily = L"Consolas ligaturized v3",
+            const float& fontSize = 72.0f,
+            const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
+        );
+
+        void DrawTextCentered
+        (
+            const std::wstring& text,
+            const D2D1::ColorF& color,
+            const std::wstring& fontFamily = L"Consolas ligaturized v3",
             const float& fontSize = 24.0f,
+            const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
+        );
+
+        void DrawTextFromLayout
+        (
+            const Microsoft::WRL::ComPtr<IDWriteTextLayout>& layout,
+            const D2D1::ColorF& color,
+            const D2D1_POINT_2F& position
+        );
+
+        Microsoft::WRL::ComPtr<IDWriteTextLayout> GetTextMetrics
+        (
+            DWRITE_TEXT_METRICS* metrics,
+            const std::wstring& text,
+            const std::wstring& fontFamily = L"Consolas ligaturized v3",
+            const float& fontSize = 72.0f,
             const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
         );
     

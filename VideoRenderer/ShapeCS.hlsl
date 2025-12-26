@@ -6,6 +6,8 @@ cbuffer CSConstants : register(b0)
 	float2 Resolution;
 	float Time;
 	float Progress;
+	float2 rSize;
+	float2 rSizeInitial;
 };
 
 Texture2D<float4> BackgroundImg : register(t0);
@@ -141,9 +143,7 @@ float4 DrawRoundedRect(uint2 pix, float2 center, float2 size, float r, float4 co
 	float mask = RoundedRectMask(pix, center, size, r);
 	if (mask > 0.0)
 	{
-		// Apply fast blur
-		float4 blur = FastGaussianBlur(pix, 200.0);
-		
+		float4 blur = FastGaussianBlur(pix, 100);
 		color.a *= mask;
 		outp = AlphaBlend(blur, color);
 	}
@@ -178,8 +178,9 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	float2 size2 = float2(2800, 1600);
 	
 	float2 rcenter = Resolution / 2;
-	float2 rsize = Time < 1 ? lerp(size1, size2, AEDoubleBackLerp(Time)) : size2;
+	// float2 rsize = Time < 1 ? lerp(size1, size2, AEDoubleBackLerp(Time)) : size2;
 	
+	float2 rsize = rSize;
 	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
 	
 	float2 topLeft = rcenter - rsize / 2;

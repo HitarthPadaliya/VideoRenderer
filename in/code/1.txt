@@ -1,0 +1,7 @@
+UENUM(BlueprintType)
+enum class ESelectionState : uint8
+{
+    None,
+    Hovered,
+    Selected
+};

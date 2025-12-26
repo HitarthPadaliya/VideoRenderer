@@ -1,0 +1,12 @@
+UCLASS()
+class AOE_API ASelectable : public AActor
+{
+    public:
+        UPROPERTY()
+        USceneComponent* SceneRoot;
+
+        UPROPERTY()
+        UStaticMeshComponent* SelectionMesh;
+
+        Some Mumbo Jumbo :: -> =>
+};

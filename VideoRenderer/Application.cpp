@@ -19,10 +19,10 @@ Application::Application
 Application::~Application() {}
 
 
-bool Application::Initialize(const std::string& outputPath)
+bool Application::Initialize(const std::string& outputPath, const std::wstring& header, const std::wstring& code)
 {
     m_pRenderer = std::make_unique<Renderer>(m_Width, m_Height);
-    if (!m_pRenderer->Initialize())
+    if (!m_pRenderer->Initialize(header, code))
     {
         std::cerr << "Failed to initialize renderer\n";
         return false;
@@ -80,7 +80,7 @@ void Application::RenderOverlay(const uint32_t& frameNumber)
     D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_Width - 50.0f, 120.0f);
     m_pRenderer->DrawText
     (
-        L"Compute Shader (RGBA16F) -> Direct2D text -> libavcodec NVENC -> HEVC Main10",
+        L"Compute Shader (RGBA16F) -> Direct2D text -> libavcodec NVENC -> HEVC Main10\nHello another line\nFinal line",
         titleRect,
         D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f),
         L"Consolas ligaturized v3",
@@ -101,4 +101,17 @@ void Application::RenderOverlay(const uint32_t& frameNumber)
         L"Consolas ligaturized v3",
         28.0f
     );
+
+    m_pRenderer->DrawHeader();
+    m_pRenderer->DrawCode();
+
+    /*std::wstring code = L"UENUM(BlueprintType)\nenum class ESelectionState : uint8\n{\n\tNone,\n\tHovered,\n\tSelected\n};";
+
+    m_pRenderer->DrawTextCentered
+    (
+        code,
+        D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f),
+        L"Consolas ligaturized v3",
+        72.0f
+    );*/
 }

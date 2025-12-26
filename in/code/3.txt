@@ -1,0 +1,17 @@
+UENUM(BlueprintType)
+enum class ESelectionState : uint8
+{
+    
+
+
+
+
+
+
+
+
+
+
+
+
+};

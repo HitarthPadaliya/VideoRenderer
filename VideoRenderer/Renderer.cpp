@@ -13,6 +13,9 @@ static void PrintHR(const char* what, HRESULT hr)
 Renderer::Renderer(const uint16_t& width, const uint16_t& height)
     : m_Width(width)
     , m_Height(height)
+    , m_HeaderPosition(0, 0)
+    , m_CodePosition(0, 0)
+    , m_CodeSize(0, 0)
 {}
 
 Renderer::~Renderer()
@@ -25,7 +28,7 @@ Renderer::~Renderer()
 }
 
 
-bool Renderer::Initialize()
+bool Renderer::Initialize(const std::wstring& header, const std::wstring& code)
 {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     if (SUCCEEDED(hr))
@@ -43,6 +46,25 @@ bool Renderer::Initialize()
     if (!CreateD2DTargets())        return false;
     if (!CreateComputePipeline())   return false;
     if (!LoadBackgroundTexture())   return false;
+
+    m_Code = code;
+
+    DWRITE_TEXT_METRICS mcode {};
+    m_pCodeLayout = GetTextMetrics(&mcode, code);
+    m_CodePosition = D2D1::Point2F
+    (
+        (3840 - mcode.width) * 0.5f - mcode.left,
+        (2160 - mcode.height) * 0.5f - mcode.top + 50.0f
+    );
+    m_CodeSize = D2D1::Point2F(mcode.width, mcode.height);
+
+    DWRITE_TEXT_METRICS mheader {};
+    m_pHeaderLayout = GetTextMetrics(&mheader, header, L"Segoe UI", 60.0f);
+    m_HeaderPosition = D2D1::Point2F
+    (
+        (3840 - mheader.width) * 0.5f - mheader.left,
+        (2160 - mcode.height - mheader.height - 200) * 0.5f - mheader.top + 50.0f
+    );
 
     std::cout << "Renderer initialized\n";
     return true;
@@ -268,6 +290,10 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
         c->Resolution[1]    = static_cast<float>(m_Height);
         c->Time             = time;
         c->Progress         = progress01;
+        c->rSize[0]         = m_CodeSize.x + 200;
+        c->rSize[1]         = m_CodeSize.y + 300;
+        c->rSizeInitial[0]  = 0;
+        c->rSizeInitial[1]  = 0;
         m_pD3DContext->Unmap(m_pCSConstants.Get(), 0);
     }
 
@@ -352,6 +378,49 @@ void Renderer::CreateTextFormat(const std::wstring& fontFamily, const float& fon
     m_CurrentFontWeight = weight;
 }
 
+void Renderer::DrawHeader()
+{
+    if (!m_pHeaderLayout)
+        return;
+
+    DrawTextFromLayout(m_pHeaderLayout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_HeaderPosition);
+}
+
+void Renderer::DrawCode()
+{
+    if (!m_pCodeLayout)
+        return;
+
+    CreateTextFormat(L"Consolas ligaturized v3", 72.0f, DWRITE_FONT_WEIGHT_NORMAL);
+    if (!m_pCurrentTextFormat)
+        return;
+
+    if (!changed)
+    {
+        // m_Code += L"HHH";
+        changed = true;
+    }
+
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
+    HRESULT hr = m_pDWriteFactory->CreateTextLayout
+    (
+        m_Code.c_str(),
+        static_cast<UINT32>(m_Code.size()),
+        m_pCurrentTextFormat.Get(),
+        3840 - 100,
+        2160 - 250,
+        &layout
+    );
+    if (FAILED(hr) || !layout)
+    {
+        PrintHR("CreateTextLayout", hr);
+        return;
+    }
+
+    DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_CodePosition);
+}
+
+
 void Renderer::DrawText
 (
     const std::wstring& text,
@@ -383,6 +452,127 @@ void Renderer::DrawText
         brush.Get()
     );
 }
+
+void Renderer::DrawTextCentered
+(
+    const std::wstring& text,
+    const D2D1::ColorF& color,
+    const std::wstring& fontFamily,
+    const float& fontSize,
+    const DWRITE_FONT_WEIGHT& weight
+)
+{
+    CreateTextFormat(fontFamily, fontSize, weight);
+    if (!m_pCurrentTextFormat)
+        return;
+
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+    HRESULT hr = m_pD2DContext->CreateSolidColorBrush(color, &brush);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush", hr);
+        return;
+    }
+
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
+    hr = m_pDWriteFactory->CreateTextLayout
+    (
+        text.c_str(),
+        static_cast<UINT32>(text.size()),
+        m_pCurrentTextFormat.Get(),
+        3600,
+        1900,
+        &layout
+    );
+    if (FAILED(hr) || !layout)
+    {
+        PrintHR("CreateTextLayout", hr);
+        return;
+    }
+
+    DWRITE_TEXT_METRICS m{};
+    hr = layout->GetMetrics(&m);
+    if (FAILED(hr))
+    {
+        PrintHR("GetMetrics", hr);
+        return;
+    }
+
+    const float x = (3840 - m.width) * 0.5f - m.left;
+    const float y = (2160 - m.height) * 0.5f - m.top;
+
+    m_pD2DContext->DrawTextLayout
+    (
+        D2D1::Point2F(x, y + 75),
+        layout.Get(),
+        brush.Get()
+    );
+}
+
+void Renderer::DrawTextFromLayout
+(
+    const Microsoft::WRL::ComPtr<IDWriteTextLayout>& layout,
+    const D2D1::ColorF& color,
+    const D2D1_POINT_2F& position
+)
+{
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+    HRESULT hr = m_pD2DContext->CreateSolidColorBrush(color, &brush);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush", hr);
+        return;
+    }
+
+    m_pD2DContext->DrawTextLayout
+    (
+        D2D1::Point2F(position.x, position.y),
+        layout.Get(),
+        brush.Get()
+    );
+}
+
+Microsoft::WRL::ComPtr<IDWriteTextLayout> Renderer::GetTextMetrics
+(
+    DWRITE_TEXT_METRICS* metrics,
+    const std::wstring& text,
+    const std::wstring& fontFamily,
+    const float& fontSize,
+    const DWRITE_FONT_WEIGHT& weight
+)
+{
+    CreateTextFormat(fontFamily, fontSize, weight);
+    if (!m_pCurrentTextFormat)
+        return nullptr;
+
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
+    HRESULT hr = m_pDWriteFactory->CreateTextLayout
+    (
+        text.c_str(),
+        static_cast<UINT32>(text.size()),
+        m_pCurrentTextFormat.Get(),
+        3840 - 100,
+        2160 - 250,
+        &layout
+    );
+    if (FAILED(hr) || !layout)
+    {
+        PrintHR("CreateTextLayout", hr);
+        return nullptr;
+    }
+
+    DWRITE_TEXT_METRICS m {};
+    hr = layout->GetMetrics(&m);
+    if (FAILED(hr))
+    {
+        PrintHR("GetMetrics", hr);
+        return nullptr;
+    }
+
+    *metrics = m;
+    return layout;
+}
+
 
 bool Renderer::LoadBackgroundTexture()
 {
