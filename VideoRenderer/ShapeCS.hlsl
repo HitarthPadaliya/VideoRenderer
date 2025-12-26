@@ -1,65 +1,20 @@
 #define PI 3.14159265359
 
-float easeOutElastic(float x)
+
+cbuffer CSConstants : register(b0)
 {
-	float c4 = (2 * PI) / 3;
+	float2 Resolution;
+	float Time;
+	float Progress;
+};
 
-	return (x == 0)
-		? 0
-		: (x == 1
-			? 1
-			: (pow(2, -10 * x) * sin((x * 10 - 0.75) * c4) + 1));
-}
+Texture2D<float4> BackgroundImg : register(t0);
+RWTexture2D<float4> Output : register(u0);
 
-float easeOutBounce(float x)
-{
-	float n1 = 7.5625;
-	float d1 = 2.75;
-
-	if (x < 1 / d1)
-		return n1 * x * x;
-	else if (x < 2 / d1)
-		return n1 * (x -= 1.5 / d1) * x + 0.75;
-	else if (x < 2.5 / d1)
-		return n1 * (x -= 2.25 / d1) * x + 0.9375;
-	
-	return n1 * (x -= 2.625 / d1) * x + 0.984375;
-}
-
-float easeOutBack(float x)
-{
-	float c1 = 1.70158;
-	float c3 = c1 + 1;
-
-	return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
-}
-
-float easeInOutQuad(float x)
-{
-	return x < 0.5 ? 2 * x * x : 1 - pow(-2 * x + 2, 2) / 2;
-}
-
-float easeInOutQuart(float x)
-{
-	return x < 0.5 ? 8 * x * x * x * x : 1 - pow(-2 * x + 2, 4) / 2;
-}
 
 float easeInOutSine(float x)
 {
 	return -(cos(PI * x) - 1) / 2;
-}
-
-
-
-
-
-
-
-
-float smoothstep01(float s)
-{
-	s = clamp(s, 0, 1);
-	return s * s * (3 - 2 * s);
 }
 
 float AEDoubleBackLerp(float t)
@@ -77,58 +32,46 @@ float AEDoubleBackLerp(float t)
 	if (t < k1)
 	{
 		float s = (t - k0) / (k1 - k0);
-		// return lerp(v0, v1, smoothstep01(s));
 		return lerp(v0, v1, easeInOutSine(s));
 	}
 	else if (t < k2)
 	{
 		float s = (t - k1) / (k2 - k1);
-		// return lerp(v1, v2, smoothstep01(s));
 		return lerp(v1, v2, easeInOutSine(s));
 	}
 	else
 	{
 		float s = (t - k2) / (k3 - k2);
-		// return lerp(v2, v3, smoothstep01(s));
 		return lerp(v2, v3, easeInOutSine(s));
 	}
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-cbuffer CSConstants : register(b0)
+float4 FastGaussianBlur(uint2 pix, float radius)
 {
-	float2 Resolution;
-	float Time;			// seconds
-	float Progress;		// 0..1
-};
-
-struct RoundedRect
-{
-	float2 center;
-	float2 size;
-	float radius;
-	float feather;
-	float4 color;
-};
-
-Texture2D<float4> BackgroundImg : register(t0);
-
-RWTexture2D<float4> Output : register(u0);
+	float sigma = radius / 3.0;
+	float sigma2 = 2.0 * sigma * sigma;
+	
+	float4 color = float4(0, 0, 0, 0);
+	float sum = 0.0;
+	
+	for (int y = -radius; y <= radius; y += 4)
+	{
+		for (int x = -radius; x <= radius; x += 4)
+		{
+			float distance = x * x + y * y;
+			float weight = exp(-distance / sigma2);
+			
+			int2 samplePos = int2(pix) + int2(x, y);
+			samplePos = clamp(samplePos, int2(0, 0), int2(Resolution.x - 1, Resolution.y - 1));
+			
+			color += BackgroundImg.Load(int3(samplePos, 0)) * weight;
+			sum += weight;
+		}
+	}
+	
+	return color / sum;
+}
 
 
 float RoundedRectMask(uint2 pix, float2 center, float2 size, float r)
@@ -136,7 +79,7 @@ float RoundedRectMask(uint2 pix, float2 center, float2 size, float r)
 	float2 p = float2(pix);
 	
 	bool inRect =
-	  	pix.x >= (center.x - (size.x / 2)) && pix.x <= (center.x + (size.x / 2))
+		pix.x >= (center.x - (size.x / 2)) && pix.x <= (center.x + (size.x / 2))
 		&& pix.y >= (center.y - (size.y / 2)) && pix.y <= (center.y + (size.y / 2));
 	
 	if (!inRect)
@@ -186,7 +129,6 @@ float CircleMask(uint2 pix, float2 center, float r)
 	return t;
 }
 
-
 float4 AlphaBlend(float4 dst, float4 src)
 {
 	float a = src.a + dst.a * (1.0 - src.a);
@@ -194,34 +136,13 @@ float4 AlphaBlend(float4 dst, float4 src)
 	return float4(c, a);
 }
 
-
 float4 DrawRoundedRect(uint2 pix, float2 center, float2 size, float r, float4 color, float4 outp)
 {
 	float mask = RoundedRectMask(pix, center, size, r);
 	if (mask > 0.0)
 	{
-		float4 blur = float4(0, 0, 0, 0);
-		float blurRad = 100;
-		
-		float sum = 0;
-		float sigma = blurRad / 3;
-		float sigma2 = 2 * sigma * sigma;
-		
-		float wt = 0;
-		
-		for (int y = -blurRad; y <= blurRad; y += 4)
-		{
-			for (int x = -blurRad; x <= blurRad; x += 4)
-			{
-				float distance = x * x + y * y;
-				wt = exp(-distance / sigma2);
-				
-				blur += BackgroundImg.Load(int3(pix + float2(x, y), 0)) * wt;
-				sum += wt;
-			}
-		}
-		
-		blur /= sum;
+		// Apply fast blur
+		float4 blur = FastGaussianBlur(pix, 200.0);
 		
 		color.a *= mask;
 		outp = AlphaBlend(blur, color);
@@ -234,14 +155,13 @@ float4 DrawCircle(uint2 pix, float2 center, float r, float4 color, float4 outp)
 {
 	float mask = CircleMask(pix, center, r);
 	if (mask > 0.0)
-	{	
+	{
 		color.a *= mask;
 		outp = AlphaBlend(outp, color);
 	}
 	
 	return outp;
 }
-
 
 [numthreads(32, 32, 1)]
 void CSMain(uint3 tid : SV_DispatchThreadID)
@@ -252,22 +172,16 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	float2 p = float2(tid.xy);
 	float2 uv = (p + 0.5) / Resolution;
 	
-	//float3 bgA = float3(0.9294, 0.8314, 0.8314);
-	//float3 bgB = float3(0.6824, 0.5294, 0.3373);
-	//float3 col = lerp(bgB, bgA, (1 - uv.x + 0.1) * (uv.y - 0.1));
-	//float4 outp = float4(col, 1);
-	
 	float4 outp = BackgroundImg.Load(uint3(tid.xy, 0));
 	
 	float2 size1 = float2(1920, 1080);
 	float2 size2 = float2(2800, 1600);
 	
 	float2 rcenter = Resolution / 2;
-	
 	float2 rsize = Time < 1 ? lerp(size1, size2, AEDoubleBackLerp(Time)) : size2;
-	// float2 rsize = size1;
 	
 	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
+	
 	float2 topLeft = rcenter - rsize / 2;
 	outp = DrawCircle(tid.xy, topLeft + 100, 25, float4(1, 0.3686, 0.3412, 1), outp);
 	topLeft.x += 75;
