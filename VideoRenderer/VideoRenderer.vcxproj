@@ -142,11 +142,13 @@
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="SyntaxHighlight\SyntaxHighlight.cpp" />
     <ClCompile Include="VideoEncoder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="SyntaxHighlight\SyntaxHighlight.h" />
     <ClInclude Include="VideoEncoder.h" />
   </ItemGroup>
   <ItemGroup>
