@@ -18,33 +18,4 @@ Download these separately. Place the respective folders in the Dependencies fold
 
 The input folder called "in" has the following structure:
 
-<img width="256" height="612" alt="image" src="https://github.com/user-attachments/assets/b8560869-9682-43e0-b5d9-7a95e7ebf91a" />
-
-
-in
-
-├── code
-
-│   ├── 1.txt
-
-│   ├── 2.txt
-
-│   ├── 3.txt
-
-│   ├── ...
-
-│
-
-├── slideinfo
-
-│   ├── 1.txt
-
-│   ├── 2.txt
-
-│   ├── 3.txt
-
-│   ├── ...
-
-│
-
-└── bg.png
+<img width="128" height="306" alt="image" src="https://github.com/user-attachments/assets/b8560869-9682-43e0-b5d9-7a95e7ebf91a" />
