@@ -6,6 +6,8 @@ It is used to create code slides for my tutorials.
 
 **Features**: MacOS-styled blurred window, syntax highlighting, window and text animations.
 
+See VideoRenderer/render/output.mp4
+
 ## Dependencies
 
 1. Visual Studio 2026 with "Desktop Development with C++" workload
