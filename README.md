@@ -19,16 +19,29 @@ Download these separately. Place the respective folders in the Dependencies fold
 The input folder called "in" has the following structure:
 
 in
+
 ├── code
+
 │   ├── 1.txt
+
 │   ├── 2.txt
+
 │   ├── 3.txt
+
 │   ├── ...
+
 │
+
 ├── slideinfo
+
 │   ├── 1.txt
+
 │   ├── 2.txt
+
 │   ├── 3.txt
+
 │   ├── ...
+
 │
+
 └── bg.png
