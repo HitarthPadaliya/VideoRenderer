@@ -361,7 +361,3 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/VideoRenderer/VideoRenderer.zip
-/VideoRenderer/output.mp4
-/VideoRenderer/output_hevc_main10.mp4
-/VideoRenderer/VideoRenderer1.zip

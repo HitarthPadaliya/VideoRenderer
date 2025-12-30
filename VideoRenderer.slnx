@@ -3,18 +3,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/bin/">
-    <File Path="bin/avcodec-62.dll" />
-    <File Path="bin/avdevice-62.dll" />
-    <File Path="bin/avfilter-11.dll" />
-    <File Path="bin/avformat-62.dll" />
-    <File Path="bin/avutil-60.dll" />
-    <File Path="bin/output.mp4" />
-    <File Path="bin/swresample-6.dll" />
-    <File Path="bin/swscale-9.dll" />
-    <File Path="bin/VideoRenderer.exe" />
-    <File Path="bin/VideoRenderer.pdb" />
-  </Folder>
   <Folder Name="/in/">
     <File Path="in/bg.png" />
     <File Path="in/bg1.png" />
