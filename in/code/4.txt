@@ -1,0 +1,7 @@
+void ABuildingManager::UpdatePreviewLocation(FVector RayPosition)
+{
+    if (PreviewBuilding != nullptr)
+        return;
+
+    PreviewBuilding->SetActorLocation(RayPosition, false, nullptr, ETeleportType::None);
+}

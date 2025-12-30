@@ -27,7 +27,10 @@
     <ClCompile Include="VideoEncoder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SyntaxHighlight\SyntaxHighlight.cpp">
+    <ClCompile Include="SyntaxHighlighter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Slide.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,7 +44,10 @@
     <ClInclude Include="Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SyntaxHighlight\SyntaxHighlight.h">
+    <ClInclude Include="SyntaxHighlighter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Slide.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

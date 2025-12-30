@@ -2,6 +2,7 @@
 
 #include "Renderer.h"
 #include "VideoEncoder.h"
+#include "Slide.h"
 
 #include <memory>
 #include <string>
@@ -25,7 +26,7 @@ class Application
         Application(const uint16_t& width, const uint16_t& height, const uint8_t& fps, const uint16_t& duration);
         ~Application();
     
-        bool Initialize(const std::string& outputPath, const std::wstring& header, const std::wstring& code);
+        bool Initialize(const std::string& outputPath, Slide* pSlide);
         void Run();
     
 

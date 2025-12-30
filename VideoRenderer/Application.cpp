@@ -19,10 +19,10 @@ Application::Application
 Application::~Application() {}
 
 
-bool Application::Initialize(const std::string& outputPath, const std::wstring& header, const std::wstring& code)
+bool Application::Initialize(const std::string& outputPath, Slide* pSlide)
 {
     m_pRenderer = std::make_unique<Renderer>(m_Width, m_Height);
-    if (!m_pRenderer->Initialize(header, code))
+    if (!m_pRenderer->Initialize(pSlide))
     {
         std::cerr << "Failed to initialize renderer\n";
         return false;

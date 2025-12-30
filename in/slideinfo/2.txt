@@ -1,0 +1,4 @@
+Header = Selectable.h
+Duration = 10
+
+MemberVars = SceneRoot, SelectionMesh

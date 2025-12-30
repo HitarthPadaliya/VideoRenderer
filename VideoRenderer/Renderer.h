@@ -11,6 +11,9 @@
 #include <iostream>
 #include <string>
 
+#include "SyntaxHighlighter.h"
+#include "Slide.h"
+
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -63,6 +66,8 @@ class Renderer
         D2D1_POINT_2F m_CodePosition;
         D2D1_POINT_2F m_CodeSize;
 
+        SyntaxHighlighter* m_pSyntaxHighlighter;
+
         std::wstring m_CurrentFontFamily;
         float m_CurrentFontSize = 72.0f;
         DWRITE_FONT_WEIGHT m_CurrentFontWeight = DWRITE_FONT_WEIGHT_NORMAL;
@@ -72,7 +77,8 @@ class Renderer
         Renderer(const uint16_t& width, const uint16_t& height);
         ~Renderer();
     
-        bool Initialize(const std::wstring& header, const std::wstring& code);
+        bool Initialize(Slide* pSlide);
+        bool InitBrushes();
 
         void RenderCompute(const float& time, const float& progress01);
     

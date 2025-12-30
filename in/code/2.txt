@@ -1,12 +1,12 @@
 UCLASS()
 class AOE_API ASelectable : public AActor
 {
+    //...
     public:
-        UPROPERTY()
+        UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
         USceneComponent* SceneRoot;
 
-        UPROPERTY()
+        UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
         UStaticMeshComponent* SelectionMesh;
-
-        Some Mumbo Jumbo :: -> =>
+    //...
 };

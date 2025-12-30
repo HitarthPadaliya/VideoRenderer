@@ -16,10 +16,13 @@ Renderer::Renderer(const uint16_t& width, const uint16_t& height)
     , m_HeaderPosition(0, 0)
     , m_CodePosition(0, 0)
     , m_CodeSize(0, 0)
+    , m_pSyntaxHighlighter(nullptr)
 {}
 
 Renderer::~Renderer()
 {
+    delete m_pSyntaxHighlighter;
+
     if (m_COMInitialized)
     {
         CoUninitialize();
@@ -28,7 +31,7 @@ Renderer::~Renderer()
 }
 
 
-bool Renderer::Initialize(const std::wstring& header, const std::wstring& code)
+bool Renderer::Initialize(Slide* pSlide)
 {
     HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     if (SUCCEEDED(hr))
@@ -47,10 +50,10 @@ bool Renderer::Initialize(const std::wstring& header, const std::wstring& code)
     if (!CreateComputePipeline())   return false;
     if (!LoadBackgroundTexture())   return false;
 
-    m_Code = code;
+    m_Code = pSlide->m_Code;
 
     DWRITE_TEXT_METRICS mcode {};
-    m_pCodeLayout = GetTextMetrics(&mcode, code);
+    m_pCodeLayout = GetTextMetrics(&mcode, pSlide->m_Code);
     m_CodePosition = D2D1::Point2F
     (
         (3840 - mcode.width) * 0.5f - mcode.left,
@@ -59,16 +62,157 @@ bool Renderer::Initialize(const std::wstring& header, const std::wstring& code)
     m_CodeSize = D2D1::Point2F(mcode.width, mcode.height);
 
     DWRITE_TEXT_METRICS mheader {};
-    m_pHeaderLayout = GetTextMetrics(&mheader, header, L"Segoe UI", 60.0f);
+    m_pHeaderLayout = GetTextMetrics(&mheader, pSlide->m_Header, L"Segoe UI", 60.0f);
     m_HeaderPosition = D2D1::Point2F
     (
         (3840 - mheader.width) * 0.5f - mheader.left,
         (2160 - mcode.height - mheader.height - 200) * 0.5f - mheader.top + 50.0f
     );
 
+    m_pSyntaxHighlighter = new SyntaxHighlighter(pSlide);
+    if (!m_pSyntaxHighlighter)
+    {
+        std::cerr << "Failed to create SyntaxHighlighter\n";
+        return false;
+    }
+
+    if (!InitBrushes())
+        return false;
+
+    std::vector<Token> tokens = m_pSyntaxHighlighter->Tokenize();
+    for (const Token& token : tokens)
+    {
+        if (token.type == TokenType::EnumVal)
+            std::wcout << token.Text(pSlide->m_Code) << '\n';
+
+        DWRITE_TEXT_RANGE range = { token.start, token.length };
+        m_pCodeLayout->SetDrawingEffect(SyntaxHighlighter::GetBrush(token).Get(), range);
+    }
+
     std::cout << "Renderer initialized\n";
     return true;
 }
+
+bool Renderer::InitBrushes()
+{
+    HRESULT hr = m_pD2DContext->CreateSolidColorBrush(Colors::Function, &Brushes::Function);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Function", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Class, &Brushes::Class);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Class", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::EnumVal, &Brushes::EnumVal);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for EnumVal", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Parameter, &Brushes::Parameter);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Parameter", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::LocalVar, &Brushes::LocalVar);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for LocalVar", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::MemberVar, &Brushes::MemberVar);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for MemberVar", hr);
+        return false;
+    }
+
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Keyword, &Brushes::Keyword);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Keyword", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::ControlStatement, &Brushes::ControlStatement);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for ControlStatement", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Preprocessor, &Brushes::Preprocessor);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Preprocessor", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Comment, &Brushes::Comment);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Comment", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Macro, &Brushes::Macro);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Macro", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::UEMacro, &Brushes::UEMacro);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for UEMacro", hr);
+        return false;
+    }
+
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Number, &Brushes::Number);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Number", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::StringLiteral, &Brushes::StringLiteral);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for StringLiteral", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::CharLiteral, &Brushes::CharLiteral);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for CharLiteral", hr);
+        return false;
+    }
+
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Other, &Brushes::Other);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for Other", hr);
+        return false;
+    }
+
+    return true;
+}
+
 
 bool Renderer::CreateDevices()
 {
@@ -395,7 +539,7 @@ void Renderer::DrawCode()
     if (!m_pCurrentTextFormat)
         return;
 
-    if (!changed)
+    /*if (!changed)
     {
         // m_Code += L"HHH";
         changed = true;
@@ -415,9 +559,9 @@ void Renderer::DrawCode()
     {
         PrintHR("CreateTextLayout", hr);
         return;
-    }
+    }*/
 
-    DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_CodePosition);
+    DrawTextFromLayout(m_pCodeLayout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_CodePosition);
 }
 
 

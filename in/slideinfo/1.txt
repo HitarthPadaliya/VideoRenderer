@@ -1,2 +1,3 @@
-Selectable.h
-10
+Header = Selectable.h
+Duration = 10
+Open
