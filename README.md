@@ -1,6 +1,6 @@
 # VIDEO RENDERER
 
-This is a specialized helper tool for my YouTube channel: [3DLand]([https://](https://www.youtube.com/@Land3D5447)).
+This is a specialized helper tool for my YouTube channel: [3DLand](https://www.youtube.com/@Land3D5447).
 
 It is used to create code slides for my tutorials.
 
