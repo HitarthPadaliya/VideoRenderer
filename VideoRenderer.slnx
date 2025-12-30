@@ -17,9 +17,6 @@
     <File Path="in/slideinfo/1.txt" />
     <File Path="in/slideinfo/2.txt" />
   </Folder>
-  <Folder Name="/out vid/">
-    <File Path="bin/output.mp4" />
-  </Folder>
   <Project Path="Dependencies/DirectXTK/DirectXTK_Desktop_2022.vcxproj" Id="e0b52ae7-e160-4d32-bf3f-910b785e5a8e" />
   <Project Path="VideoRenderer/VideoRenderer.vcxproj" Id="7ccce4eb-8b4a-4b4a-8bc5-09ed5cc1c984" />
 </Solution>
