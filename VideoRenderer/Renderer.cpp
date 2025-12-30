@@ -82,9 +82,6 @@ bool Renderer::Initialize(Slide* pSlide)
     std::vector<Token> tokens = m_pSyntaxHighlighter->Tokenize();
     for (const Token& token : tokens)
     {
-        if (token.type == TokenType::EnumVal)
-            std::wcout << token.Text(pSlide->m_Code) << '\n';
-
         DWRITE_TEXT_RANGE range = { token.start, token.length };
         m_pCodeLayout->SetDrawingEffect(SyntaxHighlighter::GetBrush(token).Get(), range);
     }
