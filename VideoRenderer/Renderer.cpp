@@ -1,5 +1,7 @@
 #include "Renderer.h"
+#include "Easing.h"
 
+#include <algorithm>
 #include <combaseapi.h>
 #include <WICTextureLoader.h>
 
@@ -79,12 +81,14 @@ bool Renderer::Initialize(Slide* pSlide)
     if (!InitBrushes())
         return false;
 
-    std::vector<Token> tokens = m_pSyntaxHighlighter->Tokenize();
-    for (const Token& token : tokens)
+    m_Tokens = m_pSyntaxHighlighter->Tokenize();
+    for (const Token& token : m_Tokens)
     {
         DWRITE_TEXT_RANGE range = { token.start, token.length };
         m_pCodeLayout->SetDrawingEffect(SyntaxHighlighter::GetBrush(token).Get(), range);
     }
+
+    InitDecoderStates();
 
     std::cout << "Renderer initialized\n";
     return true;
@@ -461,6 +465,8 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
     m_pD3DContext->CSSetUnorderedAccessViews(0, 1, nullUAVs, initialCounts);
 
     m_pD3DContext->CSSetShader(nullptr, nullptr, 0);
+
+    m_CodeAnimProgress = progress01;
 }
 
 void Renderer::BeginFrame()
@@ -532,33 +538,7 @@ void Renderer::DrawCode()
     if (!m_pCodeLayout)
         return;
 
-    CreateTextFormat(L"Consolas ligaturized v3", 72.0f, DWRITE_FONT_WEIGHT_NORMAL);
-    if (!m_pCurrentTextFormat)
-        return;
-
-    /*if (!changed)
-    {
-        // m_Code += L"HHH";
-        changed = true;
-    }
-
-    Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
-    HRESULT hr = m_pDWriteFactory->CreateTextLayout
-    (
-        m_Code.c_str(),
-        static_cast<UINT32>(m_Code.size()),
-        m_pCurrentTextFormat.Get(),
-        3840 - 100,
-        2160 - 250,
-        &layout
-    );
-    if (FAILED(hr) || !layout)
-    {
-        PrintHR("CreateTextLayout", hr);
-        return;
-    }*/
-
-    DrawTextFromLayout(m_pCodeLayout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_CodePosition);
+    DrawTextDecoder(D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_CodeAnimProgress);
 }
 
 
@@ -742,3 +722,210 @@ bool Renderer::LoadBackgroundTexture()
 
     return true;
 }
+
+
+void Renderer::InitDecoderStates()
+{
+    m_CharStates.clear();
+    m_CharStates.reserve(m_Code.size());
+
+    const uint32_t n = (uint32_t)m_Code.size();
+    if (n == 0)
+        return;
+
+    const float fadeDur = 0.08f;
+    const float maxStart = 1.0f - fadeDur;
+
+    uint32_t visibleCount = 0;
+    for (wchar_t ch : m_Code)
+    {
+        if (ch != L'\n' && ch != L' ' && ch != L'\t')
+            ++visibleCount;
+    }
+
+    const uint32_t denom = (visibleCount > 1) ? (visibleCount - 1) : 1;
+    uint32_t visibleIndex = 0;
+    float lastVisibleStart = 0.0f;
+
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        CharState s{};
+        s.c = m_Code[i];
+        s.bIsNewline = (s.c == L'\n');
+        s.bIsWhitespace = (s.c == L' ' || s.c == L'\t');
+
+        if (!s.bIsNewline && !s.bIsWhitespace)
+        {
+            const float t = (float)visibleIndex / (float)denom;
+            s.start = t * maxStart;
+            lastVisibleStart = s.start;
+            ++visibleIndex;
+        }
+        else
+        {
+            s.start = lastVisibleStart;
+        }
+
+        m_CharStates.push_back(s);
+    }
+}
+
+void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress)
+{
+    if (!m_pCodeLayout)
+        return;
+
+    CreateTextFormat(L"Consolas ligaturized v3", 72.0f, DWRITE_FONT_WEIGHT_NORMAL);
+    if (!m_pCurrentTextFormat)
+        return;
+
+    const uint32_t n = (uint32_t)m_CharStates.size();
+    if (n == 0)
+        return;
+
+    const float fadeDur = 0.01f;
+    auto CharProgress01 = [&](uint32_t i) -> float
+    {
+        const float s = m_CharStates[i].start;
+        
+        if (m_CharStates[i].bIsWhitespace || m_CharStates[i].bIsNewline)
+            return (animProgress >= s) ? 1.0f : 0.0f;
+        if (animProgress <= s)
+            return 0.0f;
+        
+        float p = (animProgress - s) / fadeDur;
+        return std::clamp(p, 0.0f, 1.0f);
+    };
+
+    uint32_t prefixLen = 0;
+    while (prefixLen < n && CharProgress01(prefixLen) >= 1.0f)
+        ++prefixLen;
+
+    if (prefixLen > 0)
+    {
+        std::wstring prefix = m_Code.substr(0, prefixLen);
+
+        Microsoft::WRL::ComPtr<IDWriteTextLayout> prefixLayout;
+        HRESULT hr = m_pDWriteFactory->CreateTextLayout
+        (
+            prefix.c_str(),
+            prefixLen,
+            m_pCurrentTextFormat.Get(),
+            3840.0f - 100.0f,
+            2160.0f - 250.0f,
+            &prefixLayout
+        );
+
+        if (SUCCEEDED(hr) && prefixLayout)
+        {
+            for (const Token& token : m_Tokens)
+            {
+                const uint32_t ts = token.start;
+                const uint32_t te = token.start + token.length;
+
+                if (token.length == 0)
+                    continue;
+
+                if (ts >= prefixLen)
+                    continue;
+
+                const uint32_t is = ts;
+                const uint32_t ie = std::min(te, prefixLen);
+                if (ie > is)
+                {
+                    DWRITE_TEXT_RANGE r{};
+                    r.startPosition = is;
+                    r.length = ie - is;
+                    prefixLayout->SetDrawingEffect(SyntaxHighlighter::GetBrush(token).Get(), r);
+                }
+            }
+
+            Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> dummy;
+            m_pD2DContext->CreateSolidColorBrush(Colors::Other, &dummy);
+
+            m_pD2DContext->DrawTextLayout
+            (
+                D2D1::Point2F(m_CodePosition.x, m_CodePosition.y),
+                prefixLayout.Get(),
+                dummy.Get()
+            );
+        }
+    }
+
+    if (prefixLen >= n)
+        return;
+
+    const float p01 = CharProgress01(prefixLen);
+    if (p01 <= 0.0f)
+        return;
+
+    const float alpha = EaseOutCubic(p01);
+
+    float hitX = 0.0f, hitY = 0.0f;
+    DWRITE_HIT_TEST_METRICS hit{};
+    HRESULT hr = m_pCodeLayout->HitTestTextPosition(prefixLen, FALSE, &hitX, &hitY, &hit);
+    if (FAILED(hr))
+        return;
+
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> baseBrush;
+    {
+        Microsoft::WRL::ComPtr<IUnknown> unk = Brushes::Other;
+
+        for (const Token& token : m_Tokens)
+        {
+            const uint32_t ts = token.start;
+            const uint32_t te = token.start + token.length;
+            if (token.length == 0)
+                continue;
+
+            if (prefixLen >= ts && prefixLen < te)
+            {
+                unk = SyntaxHighlighter::GetBrush(token);
+                break;
+            }
+        }
+
+        unk.As(&baseBrush);
+        if (!baseBrush)
+            m_pD2DContext->CreateSolidColorBrush(Colors::Other, &baseBrush);
+    }
+
+    D2D1_COLOR_F c = baseBrush->GetColor();
+    c.a *= alpha;
+
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> fadeBrush;
+    hr = m_pD2DContext->CreateSolidColorBrush(c, &fadeBrush);
+    if (FAILED(hr) || !fadeBrush)
+        return;
+
+    const wchar_t ch = m_Code[prefixLen];
+    if (ch == L'\n' || ch == L' ' || ch == L'\t')
+        return;
+
+    const std::wstring one(1, ch);
+
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> oneLayout;
+    hr = m_pDWriteFactory->CreateTextLayout
+    (
+        one.c_str(),
+        1,
+        m_pCurrentTextFormat.Get(),
+        std::max(1.0f, hit.width),
+        std::max(1.0f, hit.height),
+        &oneLayout
+    );
+
+    if (FAILED(hr) || !oneLayout)
+        return;
+
+    DWRITE_TEXT_RANGE r{ 0, 1 };
+    oneLayout->SetDrawingEffect(fadeBrush.Get(), r);
+
+    m_pD2DContext->DrawTextLayout
+    (
+        D2D1::Point2F(m_CodePosition.x + hitX, m_CodePosition.y + hitY),
+        oneLayout.Get(),
+        fadeBrush.Get()
+    );
+}
+

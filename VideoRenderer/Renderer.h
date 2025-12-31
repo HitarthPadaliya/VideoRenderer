@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "SyntaxHighlighter.h"
 #include "Slide.h"
@@ -28,6 +29,14 @@ struct CSConstants
     float Progress;
     float rSize[2];
     float rSizeInitial[2];
+};
+
+struct CharState
+{
+    wchar_t c;
+    float start;
+    bool bIsWhitespace;
+    bool bIsNewline;
 };
 
 
@@ -67,10 +76,14 @@ class Renderer
         D2D1_POINT_2F m_CodeSize;
 
         SyntaxHighlighter* m_pSyntaxHighlighter;
+        std::vector<Token> m_Tokens;
 
         std::wstring m_CurrentFontFamily;
         float m_CurrentFontSize = 72.0f;
         DWRITE_FONT_WEIGHT m_CurrentFontWeight = DWRITE_FONT_WEIGHT_NORMAL;
+
+        std::vector<CharState> m_CharStates;
+        float m_CodeAnimProgress = 0.0f;
 
 
     public:
@@ -139,4 +152,7 @@ class Renderer
         bool LoadBackgroundTexture();
         void CreateTextFormat(const std::wstring& fontFamily, const float& fontSize,
             const DWRITE_FONT_WEIGHT& weight);
+
+        void InitDecoderStates();
+        void DrawTextDecoder(const D2D1::ColorF& color, float animProgress);
 };
