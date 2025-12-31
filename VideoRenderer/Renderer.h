@@ -14,6 +14,7 @@
 
 #include "SyntaxHighlighter.h"
 #include "Slide.h"
+#include "EndInfo.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -26,7 +27,7 @@ struct CSConstants
 {
     float Resolution[2];
     float Time;
-    float Progress;
+    float Scale;
     float rSize[2];
     float rSizeInitial[2];
 };
@@ -70,8 +71,9 @@ class Renderer
         Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pCodeLayout;
 
         D2D1_POINT_2F m_HeaderPosition;
+        std::wstring m_Header;
         std::wstring m_Code;
-        bool changed = false;
+        float m_CodeDuration = 0.0f;
         D2D1_POINT_2F m_CodePosition;
         D2D1_POINT_2F m_CodeSize;
 
@@ -84,6 +86,17 @@ class Renderer
 
         std::vector<CharState> m_CharStates;
         float m_CodeAnimProgress = 0.0f;
+
+        float m_Duration        = 0.0f;
+        float m_StartScale      = 0.0f;
+        float m_EndScale        = 0.0f;
+        float m_CurrentScale    = 0.0f;
+        D2D1_POINT_2F m_StartSize;
+        D2D1_POINT_2F m_MidSize;
+        D2D1_POINT_2F m_EndSize;
+        float m_StartY  = 1080;
+        float m_MidY    = 1080;
+        float m_EndY    = 1080;
 
 
     public:
@@ -155,4 +168,6 @@ class Renderer
 
         void InitDecoderStates();
         void DrawTextDecoder(const D2D1::ColorF& color, float animProgress);
+
+        static inline float LerpTime(float time, float offset, float duration);
 };

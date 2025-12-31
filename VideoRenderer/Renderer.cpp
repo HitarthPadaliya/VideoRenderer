@@ -19,6 +19,9 @@ Renderer::Renderer(const uint16_t& width, const uint16_t& height)
     , m_CodePosition(0, 0)
     , m_CodeSize(0, 0)
     , m_pSyntaxHighlighter(nullptr)
+    , m_StartSize(0, 0)
+    , m_MidSize(0, 0)
+    , m_EndSize(0, 0)
 {}
 
 Renderer::~Renderer()
@@ -52,6 +55,7 @@ bool Renderer::Initialize(Slide* pSlide)
     if (!CreateComputePipeline())   return false;
     if (!LoadBackgroundTexture())   return false;
 
+    m_Header = pSlide->m_Header;
     m_Code = pSlide->m_Code;
 
     DWRITE_TEXT_METRICS mcode {};
@@ -89,6 +93,46 @@ bool Renderer::Initialize(Slide* pSlide)
     }
 
     InitDecoderStates();
+
+    m_CodeDuration = pSlide->m_CodeDuration;
+    m_Duration = pSlide->m_Duration;
+
+    if (pSlide->m_bOpenWindow || pSlide->m_SlideNo == 1)
+    {
+        m_StartSize = D2D1::Point2F(0, 0);
+        m_StartScale = 0;
+        m_StartY = 1080;
+    }
+    else if (pSlide->m_SlideNo > 1)
+    {
+        EndInfo prevEndInfo(pSlide->m_SlideNo - 1);
+
+        // m_StartSize = D2D1::Point2F(384, 216);
+        // m_StartScale = 1;
+        // m_StartY =
+
+        m_StartSize = D2D1::Point2F(prevEndInfo.m_WindowX, prevEndInfo.m_WindowY);
+        m_StartScale = 1;
+        m_StartY = prevEndInfo.m_HeaderY;
+    }
+
+    m_MidSize = D2D1::Point2F(m_CodeSize.x + 200, m_CodeSize.y + 300);
+    m_MidY = m_HeaderPosition.y;
+
+    if (pSlide->m_bCloseWindow)
+    {
+        m_EndSize = D2D1::Point2F(0, 0);
+        m_EndScale = 0;
+        m_EndY = 1080;
+    }
+    else
+    {
+        m_EndSize = m_MidSize;
+        m_EndScale = 1;
+        m_EndY = m_MidY;
+    }
+
+    EndInfo endinfo(pSlide->m_SlideNo, m_EndSize, m_EndY);
 
     std::cout << "Renderer initialized\n";
     return true;
@@ -426,6 +470,31 @@ bool Renderer::CreateComputePipeline()
 
 void Renderer::RenderCompute(const float& time, const float& progress01)
 {
+    D2D1_POINT_2F currentSize = m_MidSize;
+    
+    if (time <= 0.5f)
+    {
+        currentSize = D2D1::Point2F
+        (
+            std::lerp(m_StartSize.x, m_MidSize.x, EaseOutAEDoubleBack(LerpTime(time, 0, 0.5f))),
+            std::lerp(m_StartSize.y, m_MidSize.y, EaseOutAEDoubleBack(LerpTime(time, 0, 0.5f)))
+        );
+        m_CurrentScale = std::lerp(m_StartScale, 1.0f, EaseOutAEDoubleBack(LerpTime(time, 0, 0.5f)));
+
+        m_HeaderPosition.y = std::lerp(m_StartY, m_MidY, EaseOutAEDoubleBack(LerpTime(time, 0, 0.5f)));
+    }
+    else if (time >= m_Duration - 0.5f)
+    {
+        currentSize = D2D1::Point2F
+        (
+            std::lerp(m_MidSize.x, m_EndSize.x, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f))),
+            std::lerp(m_MidSize.y, m_EndSize.y, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f)))
+        );
+        m_CurrentScale = std::lerp(1.0f, m_EndScale, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f)));
+
+        m_HeaderPosition.y = std::lerp(m_MidY, m_EndY, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f)));
+    }
+
     D3D11_MAPPED_SUBRESOURCE mapped {};
     HRESULT hr = m_pD3DContext->Map(m_pCSConstants.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     if (SUCCEEDED(hr))
@@ -434,9 +503,9 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
         c->Resolution[0]    = static_cast<float>(m_Width);
         c->Resolution[1]    = static_cast<float>(m_Height);
         c->Time             = time;
-        c->Progress         = progress01;
-        c->rSize[0]         = m_CodeSize.x + 200;
-        c->rSize[1]         = m_CodeSize.y + 300;
+        c->Scale            = m_CurrentScale;
+        c->rSize[0]         = currentSize.x;
+        c->rSize[1]         = currentSize.y;
         c->rSizeInitial[0]  = 0;
         c->rSizeInitial[1]  = 0;
         m_pD3DContext->Unmap(m_pCSConstants.Get(), 0);
@@ -466,7 +535,14 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
 
     m_pD3DContext->CSSetShader(nullptr, nullptr, 0);
 
-    m_CodeAnimProgress = progress01;
+    if (time <= 0.5f || time >= m_Duration - 0.5f)
+        m_CodeAnimProgress = 0;
+    else if (time >= 0.5f && time <= m_CodeDuration + 0.5f)
+        m_CodeAnimProgress = EaseInOutSine(LerpTime(time, 0.5f, m_CodeDuration));
+    else if (time >= m_Duration - 1.5f && time <= m_Duration - 0.5f)
+        m_CodeAnimProgress = 1 - EaseInOutSine(LerpTime(time, m_Duration - 1.5f, 1));
+    else
+        m_CodeAnimProgress = 1;
 }
 
 void Renderer::BeginFrame()
@@ -530,7 +606,28 @@ void Renderer::DrawHeader()
     if (!m_pHeaderLayout)
         return;
 
-    DrawTextFromLayout(m_pHeaderLayout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_HeaderPosition);
+    // DWRITE_TEXT_METRICS mcode{};
+    // m_pCodeLayout = GetTextMetrics(&mcode, m_Code);
+    // m_CodePosition = D2D1::Point2F
+    // (
+    //     (3840 - mcode.width) * 0.5f - mcode.left,
+    //     (2160 - mcode.height) * 0.5f - mcode.top + 50.0f
+    // );
+    // m_CodeSize = D2D1::Point2F(mcode.width, mcode.height);
+
+    if (m_CurrentScale == 0)
+        return;
+
+    DWRITE_TEXT_METRICS mheader{};
+    auto layout = GetTextMetrics(&mheader, m_Header, L"Segoe UI", 60 * m_CurrentScale);
+    m_HeaderPosition.x = (3840 - mheader.width) * 0.5f - mheader.left;
+    // m_HeaderPosition = D2D1::Point2F
+    // (
+    //     (3840 - mheader.width) * 0.5f - mheader.left,
+    //     (2160 - mcode.height - mheader.height - 200) * 0.5f - mheader.top + 50.0f
+    // );
+
+    DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_HeaderPosition);
 }
 
 void Renderer::DrawCode()
@@ -918,7 +1015,7 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
     if (FAILED(hr) || !oneLayout)
         return;
 
-    DWRITE_TEXT_RANGE r{ 0, 1 };
+    DWRITE_TEXT_RANGE r { 0, 1 };
     oneLayout->SetDrawingEffect(fadeBrush.Get(), r);
 
     m_pD2DContext->DrawTextLayout
@@ -929,3 +1026,8 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
     );
 }
 
+
+float Renderer::LerpTime(float time, float offset, float duration)
+{
+    return (time - offset) / duration;
+}

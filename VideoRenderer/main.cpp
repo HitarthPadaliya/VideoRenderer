@@ -18,7 +18,11 @@ int main()
     const uint16_t height = 2160;
     const uint8_t fps = 60;
     const uint16_t duration = 3;        // in seconds
-    const std::string output = "render/output.mp4";
+    // const std::string output = "render/output.mp4";
+
+    std::string output = "render/";
+    output += std::to_string(n);
+    output += ".mp4";
 
     Slide* pSlide = new Slide(n);
 

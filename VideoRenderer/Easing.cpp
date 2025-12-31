@@ -214,12 +214,46 @@ float EaseInOutBounce(float x)
 }
 
 
-float AEDoubleBackLerp(float x)
+float EaseInAEDoubleBack(float x)
 {
-	float k0 = 0.0, v0 = 0.0;
-	float k1 = 0.3333, v1 = 1.04;
-	float k2 = 0.4167, v2 = 0.98;
-	float k3 = 0.5, v3 = 1.0;
+	float k0 = 0.0f,	v0 = 0.0f;
+	float k1 = 0.1667f, v1 = 0.01f;
+	float k2 = 0.3333f, v2 = -0.02f;
+	float k3 = 1.0f,	v3 = 1.0f;
+
+	if (x <= k0)
+		return v0;
+	if (x >= k3)
+		return v3;
+
+	if (x < k1)
+	{
+		float s = (x - k0) / (k1 - k0);
+		return std::lerp(v0, v1, EaseInOutSine(s));
+	}
+	else if (x < k2)
+	{
+		float s = (x - k1) / (k2 - k1);
+		return std::lerp(v1, v2, EaseInOutSine(s));
+	}
+	else
+	{
+		float s = (x - k2) / (k3 - k2);
+		return std::lerp(v2, v3, EaseInOutSine(s));
+	}
+}
+
+float EaseOutAEDoubleBack(float x)
+{
+	//  float k0 = 0.0f,	v0 = 0.0f;
+	//  float k1 = 0.3333f, v1 = 1.02f;
+	//  float k2 = 0.4167f, v2 = 0.99f;
+	//  float k3 = 0.5f,	v3 = 1.0f;
+
+	float k0 = 0.0f,	v0 = 0.0f;
+	float k1 = 0.6667f, v1 = 1.02f;
+	float k2 = 0.8333f, v2 = 0.99f;
+	float k3 = 1.0f,	v3 = 1.0f;
 
 	if (x <= k0)
 		return v0;

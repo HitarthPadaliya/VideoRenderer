@@ -77,7 +77,7 @@ void Application::Run()
 
 void Application::RenderOverlay(const uint32_t& frameNumber)
 {
-    D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_Width - 50.0f, 120.0f);
+    /* D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_Width - 50.0f, 120.0f);
     m_pRenderer->DrawText
     (
         L"Compute Shader (RGBA16F) -> Direct2D text -> libavcodec NVENC -> HEVC Main10\nHello another line\nFinal line",
@@ -100,7 +100,7 @@ void Application::RenderOverlay(const uint32_t& frameNumber)
         D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f),
         L"Consolas ligaturized v3",
         28.0f
-    );
+    );*/
 
     m_pRenderer->DrawHeader();
     m_pRenderer->DrawCode();

@@ -16,6 +16,8 @@ class Slide
         bool m_bOpenWindow      = false;
         bool m_bCloseWindow     = false;
         float m_Duration        = 0.0f;
+        float m_CodeDuration    = 0.0f;
+        int m_SlideNo           = 1;
 
         std::unordered_set<std::wstring> m_Functions;
         std::unordered_set<std::wstring> m_Params;

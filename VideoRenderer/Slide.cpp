@@ -3,6 +3,8 @@
 
 Slide::Slide(const int& n)
 {
+    m_SlideNo = n;
+
 	std::wstring line;
     std::string fileName = "../in/slideinfo/";
     fileName += std::to_string(n);
@@ -20,7 +22,9 @@ Slide::Slide(const int& n)
         if (line.starts_with(L"Header = "))
             m_Header = AfterPrefix(line, L"Header = ");
         else if (line.starts_with(L"Duration = "))
-            m_Duration = _wtoi(AfterPrefix(line, L"Duration = ").c_str());
+            m_Duration = _wtof(AfterPrefix(line, L"Duration = ").c_str());
+        else if (line.starts_with(L"CodeDuration = "))
+            m_CodeDuration = _wtof(AfterPrefix(line, L"CodeDuration = ").c_str());
         else if (line.starts_with(L"Open"))
             m_bOpenWindow = true;
         else if (line.starts_with(L"Close"))

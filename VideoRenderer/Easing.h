@@ -44,4 +44,5 @@ float EaseInBounce(float x);
 float EaseOutBounce(float x);
 float EaseInOutBounce(float x);
 
-float AEDoubleBackLerp(float x);
+float EaseInAEDoubleBack(float x);
+float EaseOutAEDoubleBack(float x);

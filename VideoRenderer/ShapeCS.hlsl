@@ -5,7 +5,7 @@ cbuffer CSConstants : register(b0)
 {
 	float2 Resolution;
 	float Time;
-	float Progress;
+	float Scale;
 	float2 rSize;
 	float2 rSizeInitial;
 };
@@ -14,7 +14,7 @@ Texture2D<float4> BackgroundImg : register(t0);
 RWTexture2D<float4> Output : register(u0);
 
 
-float easeInOutSine(float x)
+/*float easeInOutSine(float x)
 {
 	return -(cos(PI * x) - 1) / 2;
 }
@@ -46,7 +46,7 @@ float AEDoubleBackLerp(float t)
 		float s = (t - k2) / (k3 - k2);
 		return lerp(v2, v3, easeInOutSine(s));
 	}
-}
+}*/
 
 
 float4 FastGaussianBlur(uint2 pix, float radius)
@@ -174,21 +174,21 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 	
 	float4 outp = BackgroundImg.Load(uint3(tid.xy, 0));
 	
-	float2 size1 = float2(1920, 1080);
-	float2 size2 = float2(2800, 1600);
+	// float2 size1 = float2(1920, 1080);
+	// float2 size2 = float2(2800, 1600);
 	
 	float2 rcenter = Resolution / 2;
 	// float2 rsize = Time < 1 ? lerp(size1, size2, AEDoubleBackLerp(Time)) : size2;
 	
 	float2 rsize = rSize;
-	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
+	outp = DrawRoundedRect(tid.xy, rcenter, rsize, 100 * Scale, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
 	
-	float2 topLeft = rcenter - rsize / 2;
-	outp = DrawCircle(tid.xy, topLeft + 100, 25, float4(1, 0.3686, 0.3412, 1), outp);
-	topLeft.x += 75;
-	outp = DrawCircle(tid.xy, topLeft + 100, 25, float4(1, 0.7294, 0.1804, 1), outp);
-	topLeft.x += 75;
-	outp = DrawCircle(tid.xy, topLeft + 100, 25, float4(0.1569, 0.7882, 0.2549, 1), outp);
+	float2 topLeft = rcenter - rsize / 2 + 100 * Scale;
+	outp = DrawCircle(tid.xy, topLeft, 25 * Scale, float4(1, 0.3686, 0.3412, 1), outp);
+	topLeft.x += 75 * Scale;
+	outp = DrawCircle(tid.xy, topLeft, 25 * Scale, float4(1, 0.7294, 0.1804, 1), outp);
+	topLeft.x += 75 * Scale;
+	outp = DrawCircle(tid.xy, topLeft, 25 * Scale, float4(0.1569, 0.7882, 0.2549, 1), outp);
 	
 	outp.rgb *= outp.a;
 	Output[tid.xy] = outp;

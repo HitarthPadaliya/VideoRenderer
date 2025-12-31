@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Easing.cpp" />
+    <ClCompile Include="EndInfo.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Slide.cpp" />
@@ -150,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="Easing.h" />
+    <ClInclude Include="EndInfo.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Slide.h" />
     <ClInclude Include="SyntaxHighlighter.h" />
