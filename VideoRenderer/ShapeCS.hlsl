@@ -11,121 +11,19 @@ cbuffer CSConstants : register(b0)
 };
 
 Texture2D<float4> BackgroundImg : register(t0);
+Texture2D<float4> BlurredImg : register(t1);
 RWTexture2D<float4> Output : register(u0);
 
 
-float4 FastGaussianBlur(uint2 pix, float radius)
+float sdRoundRect(float2 p, float2 center, float2 size, float r)
 {
-	float sigma = radius / 3.0;
-	float sigma2 = 2.0 * sigma * sigma;
-	
-	float4 color = float4(0, 0, 0, 0);
-	float sum = 0.0;
-	
-	for (int y = -radius; y <= radius; y += 4)
-	{
-		for (int x = -radius; x <= radius; x += 4)
-		{
-			float distance = x * x + y * y;
-			float weight = exp(-distance / sigma2);
-			
-			int2 samplePos = int2(pix) + int2(x, y);
-			samplePos = clamp(samplePos, int2(0, 0), int2(Resolution.x - 1, Resolution.y - 1));
-			
-			color += BackgroundImg.Load(int3(samplePos, 0)) * weight;
-			sum += weight;
-		}
-	}
-	
-	return color / sum;
+	float2 d = abs(p - center) - (size * 0.5f - r);
+	return length(max(d, 0.0f)) + min(max(d.x, d.y), 0.0f) - r;
 }
 
-
-float RoundedRectMask(uint2 pix, float2 center, float2 size, float r)
+float sdCircle(float2 p, float2 center, float r)
 {
-	float2 p = float2(pix);
-	
-	bool inRect =
-		pix.x >= (center.x - (size.x / 2)) && pix.x <= (center.x + (size.x / 2))
-		&& pix.y >= (center.y - (size.y / 2)) && pix.y <= (center.y + (size.y / 2));
-	
-	if (!inRect)
-		return 0;
-	
-	bool inRect1 =
-		pix.x >= (center.x - (size.x / 2) + r) && pix.x <= (center.x + (size.x / 2) - r)
-		&& pix.y >= (center.y - (size.y / 2)) && pix.y <= (center.y + (size.y / 2));
-	
-	bool inRect2 =
-		pix.x >= (center.x - (size.x / 2)) && pix.x <= (center.x + (size.x / 2))
-		&& pix.y >= (center.y - (size.y / 2) + r) && pix.y <= (center.y + (size.y / 2) - r);
-	
-	if (inRect1 || inRect2)
-		return 1;
-	
-	float2 p1 = float2(center.x - (size.x / 2) + r, center.y - (size.y / 2) + r);
-	float d = length(p - p1);
-	float t = 1.0 - saturate(d - r);
-	if (t > 0)
-		return t;
-	
-	float2 p2 = float2(center.x + (size.x / 2) - r, center.y - (size.y / 2) + r);
-	d = length(p - p2);
-	t = 1.0 - saturate(d - r);
-	if (t > 0)
-		return t;
-	
-	float2 p3 = float2(center.x - (size.x / 2) + r, center.y + (size.y / 2) - r);
-	d = length(p - p3);
-	t = 1.0 - saturate(d - r);
-	if (t > 0)
-		return t;
-	
-	float2 p4 = float2(center.x + (size.x / 2) - r, center.y + (size.y / 2) - r);
-	d = length(p - p4);
-	t = 1.0 - saturate(d - r);
-	
-	return t;
-}
-
-float CircleMask(uint2 pix, float2 center, float r)
-{
-	float2 p = float2(pix);
-	float d = length(p - center);
-	float t = 1.0 - saturate(d - r);
-	return t;
-}
-
-float4 AlphaBlend(float4 dst, float4 src)
-{
-	float a = src.a + dst.a * (1.0 - src.a);
-	float3 c = (src.rgb * src.a + dst.rgb * dst.a * (1.0 - src.a)) / max(a, 1e-5);
-	return float4(c, a);
-}
-
-float4 DrawRoundedRect(uint2 pix, float2 center, float2 size, float r, float4 color, float4 outp)
-{
-	float mask = RoundedRectMask(pix, center, size, r);
-	if (mask > 0.0)
-	{
-		float4 blur = FastGaussianBlur(pix, 100);
-		color.a *= mask;
-		outp = AlphaBlend(blur, color);
-	}
-	
-	return outp;
-}
-
-float4 DrawCircle(uint2 pix, float2 center, float r, float4 color, float4 outp)
-{
-	float mask = CircleMask(pix, center, r);
-	if (mask > 0.0)
-	{
-		color.a *= mask;
-		outp = AlphaBlend(outp, color);
-	}
-	
-	return outp;
+	return length(p - center) - r;
 }
 
 [numthreads(32, 32, 1)]
@@ -135,20 +33,35 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
 		return;
 
 	float2 p = float2(tid.xy);
-	float2 uv = (p + 0.5) / Resolution;
-	
+	float2 uv = (p + 0.5f) / Resolution;
+
 	float4 outp = BackgroundImg.Load(uint3(tid.xy, 0));
+
+	float2 rcenter = Resolution * 0.5f;
+	float cornerRadius = 100.0f * Scale;
 	
-	float2 rcenter = Resolution / 2;
-	outp = DrawRoundedRect(tid.xy, rcenter, rSize, 100 * Scale, float4(0.0863, 0.0863, 0.0863, 0.75), outp);
+	float dRect = sdRoundRect(p, rcenter, rSize, cornerRadius);
+	if (dRect <= 0.0f)
+		outp = BlurredImg.Load(uint3(tid.xy, 0));
+
+	float2 topLeft = rcenter - rSize * 0.5f + cornerRadius;
+
+	float circleRadius = 25.0f * Scale;
+	float d = sdCircle(p, topLeft, circleRadius);
+	if (d <= 0.0f)
+		outp = float4(1.0f, 0.3686f, 0.3412f, 1.0f);
 	
-	float2 topLeft = rcenter - rSize / 2 + 100 * Scale;
-	outp = DrawCircle(tid.xy, topLeft, 25 * Scale, float4(1, 0.3686, 0.3412, 1), outp);
-	topLeft.x += 75 * Scale;
-	outp = DrawCircle(tid.xy, topLeft, 25 * Scale, float4(1, 0.7294, 0.1804, 1), outp);
-	topLeft.x += 75 * Scale;
-	outp = DrawCircle(tid.xy, topLeft, 25 * Scale, float4(0.1569, 0.7882, 0.2549, 1), outp);
-	
-	outp.rgb *= outp.a;
+	float2 center2 = topLeft;
+	center2.x += 75.0f * Scale;
+	d = sdCircle(p, center2, circleRadius);
+	if (d <= 0.0f)
+		outp = float4(1.0f, 0.7294f, 0.1804f, 1.0f);
+
+	float2 center3 = topLeft;
+	center3.x += 150.0f * Scale;
+	d = sdCircle(p, center3, circleRadius);
+	if (d <= 0.0f)
+		outp = float4(0.1569f, 0.7882f, 0.2549f, 1.0f);
+
 	Output[tid.xy] = outp;
 }

@@ -55,6 +55,7 @@ bool Renderer::Initialize(Slide* pSlide)
     if (!CreateD2DTargets())        return false;
     if (!CreateComputePipeline())   return false;
     if (!LoadBackgroundTexture())   return false;
+    if (!LoadBlurredTexture())      return false;
 
     m_pSyntaxHighlighter = new SyntaxHighlighter(pSlide);
     if (!m_pSyntaxHighlighter)
@@ -533,8 +534,8 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
     ID3D11Buffer* cbs[] = { m_pCSConstants.Get() };
     m_pD3DContext->CSSetConstantBuffers(0, 1, cbs);
 
-    ID3D11ShaderResourceView* srvs[] = { m_pBackgroundSRV.Get() };
-    m_pD3DContext->CSSetShaderResources(0, 1, srvs);
+    ID3D11ShaderResourceView* srvs[] = { m_pBackgroundSRV.Get(), m_pBlurredSRV.Get() };
+    m_pD3DContext->CSSetShaderResources(0, 2, srvs);
 
     ID3D11UnorderedAccessView* uavs[] = { m_pRenderUAV.Get() };
     UINT initialCounts[] = { 0 };
@@ -544,8 +545,8 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
     UINT gy = (m_Height + 31) / 32;
     m_pD3DContext->Dispatch(gx, gy, 1);
 
-    ID3D11ShaderResourceView* nullSRV[] = { nullptr };
-    m_pD3DContext->CSSetShaderResources(0, 1, nullSRV);
+    ID3D11ShaderResourceView* nullSRV[] = { nullptr, nullptr };
+    m_pD3DContext->CSSetShaderResources(0, 2, nullSRV);
 
     ID3D11UnorderedAccessView* nullUAVs[] = { nullptr };
     m_pD3DContext->CSSetUnorderedAccessViews(0, 1, nullUAVs, initialCounts);
@@ -843,6 +844,34 @@ bool Renderer::LoadBackgroundTexture()
     }
 
     hr = texRes.As(&m_pBackgroundTex);
+    if (FAILED(hr))
+    {
+        PrintHR("Query ID3D11Texture2D", hr);
+        return false;
+    }
+
+    return true;
+}
+
+bool Renderer::LoadBlurredTexture()
+{
+    Microsoft::WRL::ComPtr<ID3D11Resource> texRes;
+    HRESULT hr = DirectX::CreateWICTextureFromFile
+    (
+        m_pD3DDevice.Get(),
+        m_pD3DContext.Get(),
+        L"../in/bg_blurred.png",
+        texRes.GetAddressOf(),
+        m_pBlurredSRV.GetAddressOf()
+    );
+
+    if (FAILED(hr))
+    {
+        PrintHR("CreateWICTextureFromFile(bg_blurred.png)", hr);
+        return false;
+    }
+
+    hr = texRes.As(&m_pBlurredTex);
     if (FAILED(hr))
     {
         PrintHR("Query ID3D11Texture2D", hr);

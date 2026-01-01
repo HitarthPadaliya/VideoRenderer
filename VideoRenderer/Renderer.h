@@ -77,6 +77,8 @@ class Renderer
 
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pBackgroundTex;
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBackgroundSRV;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pBlurredTex;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBlurredSRV;
 
         Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pHeaderLayout;
         Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pCodeLayout;
@@ -177,6 +179,7 @@ class Renderer
         bool CreateD2DTargets();
         bool CreateComputePipeline();
         bool LoadBackgroundTexture();
+        bool LoadBlurredTexture();
         void CreateTextFormat(const std::wstring& fontFamily, const float& fontSize,
             const DWRITE_FONT_WEIGHT& weight);
 
