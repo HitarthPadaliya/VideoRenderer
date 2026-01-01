@@ -1,4 +1,5 @@
 #include "Slide.h"
+#include <cwctype>
 
 
 Slide::Slide(const int& n)

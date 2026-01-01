@@ -1,4 +1,5 @@
 #pragma once
+
 #define NOMINMAX
 
 #include <d3d11.h>
@@ -7,7 +8,6 @@
 #include <dwrite.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
-
 #include <iostream>
 #include <string>
 #include <vector>
@@ -22,7 +22,6 @@
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 
-
 struct CSConstants
 {
     float Resolution[2];
@@ -35,139 +34,178 @@ struct CSConstants
 struct CharState
 {
     wchar_t c;
-    float start;
-    bool bIsWhitespace;
-    bool bIsNewline;
+    float   start;
+    bool    bIsWhitespace;
+    bool    bIsNewline;
 };
 
 struct HeaderState
 {
     D2D1_POINT_2F prevPos;
-    float prevScale = 1;
-    float prevOpacity = 1;
+    float         prevScale = 1.0f;
+    float         prevOpacity = 1.0f;
 
     D2D1_POINT_2F pos;
-    float scale = 0;
-    float opacity = 0;
+    float         scale = 0.0f;
+    float         opacity = 0.0f;
 };
 
+struct AnimTrack
+{
+    float t0 = 0.0f;
+    float t1 = 1.0f;
+    float v0 = 0.0f;
+    float v1 = 1.0f;
+    float (*ease)(float) = nullptr;
+};
 
 class Renderer
 {
-    private:
-        uint16_t m_Width = 0;
-        uint16_t m_Height = 0;
-        bool m_COMInitialized = false;
+private:
+    uint16_t m_Width = 0;
+    uint16_t m_Height = 0;
 
-        Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_pReusableBrush;
+    bool m_COMInitialized = false;
 
-        Microsoft::WRL::ComPtr<ID3D11Device> m_pD3DDevice;
-        Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_pD3DContext;
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pRenderTex;
-        Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_pRenderUAV;
+    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>      m_pReusableBrush;
+    Microsoft::WRL::ComPtr<ID3D11Device>             m_pD3DDevice;
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext>      m_pD3DContext;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D>          m_pRenderTex;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_pRenderUAV;
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader>      m_pCS;
+    Microsoft::WRL::ComPtr<ID3D11Buffer>             m_pCSConstants;
 
-        Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_pCS;
-        Microsoft::WRL::ComPtr<ID3D11Buffer> m_pCSConstants;
+    Microsoft::WRL::ComPtr<ID2D1Factory1>       m_pD2DFactory;
+    Microsoft::WRL::ComPtr<ID2D1Device>         m_pD2DDevice;
+    Microsoft::WRL::ComPtr<ID2D1DeviceContext>  m_pD2DContext;
+    Microsoft::WRL::ComPtr<ID2D1Bitmap1>        m_pD2DTargetBitmap;
+    Microsoft::WRL::ComPtr<IDWriteFactory>      m_pDWriteFactory;
+    Microsoft::WRL::ComPtr<IDWriteTextFormat>   m_pCurrentTextFormat;
 
-        Microsoft::WRL::ComPtr<ID2D1Factory1> m_pD2DFactory;
-        Microsoft::WRL::ComPtr<ID2D1Device> m_pD2DDevice;
-        Microsoft::WRL::ComPtr<ID2D1DeviceContext> m_pD2DContext;
-        Microsoft::WRL::ComPtr<ID2D1Bitmap1> m_pD2DTargetBitmap;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D>          m_pBackgroundTex;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBackgroundSRV;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D>          m_pBlurredTex;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBlurredSRV;
 
-        Microsoft::WRL::ComPtr<IDWriteFactory> m_pDWriteFactory;
-        Microsoft::WRL::ComPtr<IDWriteTextFormat> m_pCurrentTextFormat;
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pHeaderLayout;
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pCodeLayout;
 
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pBackgroundTex;
-        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBackgroundSRV;
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pBlurredTex;
-        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_pBlurredSRV;
+    D2D1_POINT_2F m_HeaderPosition;
 
-        Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pHeaderLayout;
-        Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pCodeLayout;
+    std::wstring m_Header;
+    std::wstring m_PrevHeader;
+    HeaderState* m_pHeaderState = nullptr;
 
-        D2D1_POINT_2F m_HeaderPosition;
-        std::wstring m_Header;
-        std::wstring m_PrevHeader;
-        HeaderState* m_pHeaderState = nullptr;
-        std::wstring m_Code;
-        float m_CodeDuration = 0.0f;
-        D2D1_POINT_2F m_CodePosition;
-        D2D1_POINT_2F m_CodeSize;
+    std::wstring m_Code;
+    float        m_CodeDuration = 0.0f;
 
-        SyntaxHighlighter* m_pSyntaxHighlighter;
-        std::vector<Token> m_Tokens;
+    D2D1_POINT_2F m_CodePosition;
+    D2D1_POINT_2F m_CodeSize;
 
-        std::wstring m_CurrentFontFamily;
-        float m_CurrentFontSize = 72.0f;
-        DWRITE_FONT_WEIGHT m_CurrentFontWeight = DWRITE_FONT_WEIGHT_NORMAL;
+    SyntaxHighlighter* m_pSyntaxHighlighter = nullptr;
+    std::vector<Token>      m_Tokens;
+    std::wstring            m_CurrentFontFamily;
+    float                   m_CurrentFontSize = 72.0f;
+    DWRITE_FONT_WEIGHT      m_CurrentFontWeight = DWRITE_FONT_WEIGHT_NORMAL;
 
-        std::vector<CharState> m_CharStates;
-        float m_CodeAnimProgress = 0.0f;
+    std::vector<CharState> m_CharStates;
+    float                  m_CodeAnimProgress = 0.0f;
 
-        float m_Duration        = 0.0f;
-        float m_StartScale      = 0.0f;
-        float m_EndScale        = 0.0f;
-        float m_CurrentScale    = 0.0f;
-        D2D1_POINT_2F m_StartSize;
-        D2D1_POINT_2F m_MidSize;
-        D2D1_POINT_2F m_EndSize;
-        D2D1_POINT_2F m_CurrentSize;
-        float m_StartY  = 1080;
-        float m_MidY    = 1080;
-        float m_EndY    = 1080;
+    float m_Duration = 0.0f;
+    float m_StartScale = 0.0f;
+    float m_EndScale = 0.0f;
+    float m_CurrentScale = 0.0f;
 
+    D2D1_POINT_2F m_StartSize;
+    D2D1_POINT_2F m_MidSize;
+    D2D1_POINT_2F m_EndSize;
+    D2D1_POINT_2F m_CurrentSize;
 
-    public:
-        Renderer(const uint16_t& width, const uint16_t& height);
-        ~Renderer();
-    
-        bool Initialize(Slide* pSlide);
-        bool InitBrushes();
+    float m_StartY = 1080.0f;
+    float m_MidY = 1080.0f;
+    float m_EndY = 1080.0f;
 
-        void RenderCompute(const float& time, const float& progress01);
-    
-        void BeginFrame();
-        void EndFrame();
-    
-        void DrawHeader();
-        void DrawCode();
+    AnimTrack m_TrackSizeXIn;
+    AnimTrack m_TrackSizeYIn;
+    AnimTrack m_TrackScaleIn;
+    AnimTrack m_TrackHeaderYIn;
 
-        void DrawTextFromLayout
-        (
-            const Microsoft::WRL::ComPtr<IDWriteTextLayout>& layout,
-            const D2D1::ColorF& color,
-            const D2D1_POINT_2F& position
-        );
+    AnimTrack m_TrackSizeXOut;
+    AnimTrack m_TrackSizeYOut;
+    AnimTrack m_TrackScaleOut;
+    AnimTrack m_TrackHeaderYOut;
 
-        Microsoft::WRL::ComPtr<IDWriteTextLayout> GetTextMetrics
-        (
-            DWRITE_TEXT_METRICS* metrics,
-            const std::wstring& text,
-            const std::wstring& fontFamily = L"Consolas ligaturized v3",
-            const float& fontSize = 72.0f,
-            const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
-        );
-    
-        ID3D11Texture2D* GetRenderTexture()     { return m_pRenderTex.Get(); }
-        ID3D11Device* GetDevice()               { return m_pD3DDevice.Get(); }
-        ID3D11DeviceContext* GetContext()       { return m_pD3DContext.Get(); }
-    
-        uint16_t GetWidth()     const { return m_Width; }
-        uint16_t GetHeight()    const { return m_Height; }
-    
+public:
+    Renderer(const uint16_t& width, const uint16_t& height);
+    ~Renderer();
 
-    private:
-        bool CreateDevices();
-        bool CreateRenderTargets();
-        bool CreateD2DTargets();
-        bool CreateComputePipeline();
-        bool LoadBackgroundTexture();
-        bool LoadBlurredTexture();
-        void CreateTextFormat(const std::wstring& fontFamily, const float& fontSize,
-            const DWRITE_FONT_WEIGHT& weight);
+    bool Initialize(Slide* pSlide);
+    bool InitBrushes();
 
-        void InitDecoderStates();
-        void DrawTextDecoder(const D2D1::ColorF& color, float animProgress);
+    void RenderCompute(const float& time, const float& progress01);
 
-        static inline float LerpTime(float time, float offset, float duration);
+    void BeginFrame();
+    void EndFrame();
+
+    void DrawHeader();
+    void DrawCode();
+
+    void DrawTextFromLayout(
+        const Microsoft::WRL::ComPtr<IDWriteTextLayout>& layout,
+        const D2D1::ColorF& color,
+        const D2D1_POINT_2F& position
+    );
+
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> GetTextMetrics(
+        DWRITE_TEXT_METRICS* metrics,
+        const std::wstring& text,
+        const std::wstring& fontFamily = L"Consolas ligaturized v3",
+        const float& fontSize = 72.0f,
+        const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
+    );
+
+    ID3D11Texture2D* GetRenderTexture() { return m_pRenderTex.Get(); }
+    ID3D11Device* GetDevice() { return m_pD3DDevice.Get(); }
+    ID3D11DeviceContext* GetContext() { return m_pD3DContext.Get(); }
+    uint16_t             GetWidth()  const { return m_Width; }
+    uint16_t             GetHeight() const { return m_Height; }
+
+private:
+    bool CreateDevices();
+    bool CreateRenderTargets();
+    bool CreateD2DTargets();
+    bool CreateComputePipeline();
+    bool LoadBackgroundTexture();
+    bool LoadBlurredTexture();
+
+    void CreateTextFormat(
+        const std::wstring& fontFamily,
+        const float& fontSize,
+        const DWRITE_FONT_WEIGHT& weight
+    );
+
+    void InitDecoderStates();
+    void DrawTextDecoder(const D2D1::ColorF& color, float animProgress);
+
+    static inline float LerpTime(float time, float offset, float duration)
+    {
+        return (time - offset) / duration;
+    }
+
+    static inline float EvalTrack(const AnimTrack& tr, float time)
+    {
+        if (!tr.ease)
+        {
+            if (time <= tr.t0) return tr.v0;
+            if (time >= tr.t1) return tr.v1;
+            const float u = (time - tr.t0) / (tr.t1 - tr.t0);
+            return tr.v0 + (tr.v1 - tr.v0) * u;
+        }
+
+        if (time <= tr.t0) return tr.v0;
+        if (time >= tr.t1) return tr.v1;
+        const float u = (time - tr.t0) / (tr.t1 - tr.t0);
+        const float e = tr.ease(u);
+        return tr.v0 + (tr.v1 - tr.v0) * e;
+    }
 };
