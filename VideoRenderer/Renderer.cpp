@@ -56,6 +56,18 @@ bool Renderer::Initialize(Slide* pSlide)
     if (!CreateComputePipeline())   return false;
     if (!LoadBackgroundTexture())   return false;
 
+    m_pSyntaxHighlighter = new SyntaxHighlighter(pSlide);
+    if (!m_pSyntaxHighlighter)
+    {
+        std::cerr << "Failed to create SyntaxHighlighter\n";
+        return false;
+    }
+
+    if (!InitBrushes())
+        return false;
+
+    m_Tokens = m_pSyntaxHighlighter->Tokenize();
+
     m_Header = pSlide->m_Header;
     m_Code = pSlide->m_Code;
 
@@ -76,17 +88,6 @@ bool Renderer::Initialize(Slide* pSlide)
         (2160 - mcode.height - mheader.height - 200) * 0.5f - mheader.top + 50.0f
     );
 
-    m_pSyntaxHighlighter = new SyntaxHighlighter(pSlide);
-    if (!m_pSyntaxHighlighter)
-    {
-        std::cerr << "Failed to create SyntaxHighlighter\n";
-        return false;
-    }
-
-    if (!InitBrushes())
-        return false;
-
-    m_Tokens = m_pSyntaxHighlighter->Tokenize();
     for (const Token& token : m_Tokens)
     {
         DWRITE_TEXT_RANGE range = { token.start, token.length };
@@ -117,14 +118,10 @@ bool Renderer::Initialize(Slide* pSlide)
 
         if (m_Header.compare(m_PrevHeader) != 0)
         {
-            std::cout << "Not equal\n";
-
             m_pHeaderState = new HeaderState();
             m_pHeaderState->prevPos = D2D1::Point2F(m_HeaderPosition.x, m_StartY);
             m_pHeaderState->pos = m_HeaderPosition;
         }
-        else
-            std::cout << "equal\n";
     }
 
     m_MidSize = D2D1::Point2F(m_CodeSize.x + 200, m_CodeSize.y + 300);
@@ -642,7 +639,7 @@ void Renderer::DrawHeader()
         m_HeaderPosition.x = (3840 - mheader.width) * 0.5f - mheader.left;
         m_HeaderPosition.y += mheader.height / 2 * (1.0f - scale);
 
-        m_HeaderPosition.y = 1080 - m_CurrentSize.y * 0.5f + 100 - mheader.height * 0.5f;
+        m_HeaderPosition.y = 1080 - m_CurrentSize.y * 0.5f + 100 * m_CurrentScale - mheader.height * 0.5f;
 
         float opacity = m_pHeaderState ? m_pHeaderState->opacity : 1;
         DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, opacity), m_HeaderPosition);
@@ -658,7 +655,7 @@ void Renderer::DrawHeader()
     m_pHeaderState->prevPos.x = (3840 - mheader.width) * 0.5f - mheader.left;
     m_pHeaderState->prevPos.y = m_HeaderPosition.y;
 
-    m_pHeaderState->prevPos.y = 1080 - m_CurrentSize.y * 0.5f + 100 - mheader.height * 0.5f;
+    m_pHeaderState->prevPos.y = 1080 - m_CurrentSize.y * 0.5f + 100 * m_CurrentScale - mheader.height * 0.5f;
 
     DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, m_pHeaderState->prevOpacity), m_pHeaderState->prevPos);
 

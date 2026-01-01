@@ -19,6 +19,8 @@ class Slide
         float m_CodeDuration    = 0.0f;
         int m_SlideNo           = 1;
 
+        std::unordered_set<std::wstring> m_Classes;
+        std::unordered_set<std::wstring> m_Macros;
         std::unordered_set<std::wstring> m_Functions;
         std::unordered_set<std::wstring> m_Params;
         std::unordered_set<std::wstring> m_LocalVars;

@@ -29,6 +29,10 @@ Slide::Slide(const int& n)
             m_bOpenWindow = true;
         else if (line.starts_with(L"Close"))
             m_bCloseWindow = true;
+        else if (line.starts_with(L"Classes = "))
+            ParseNames(AfterPrefix(line, L"Classes = "), m_Classes);
+        else if (line.starts_with(L"Macros = "))
+            ParseNames(AfterPrefix(line, L"Macros = "), m_Macros);
         else if (line.starts_with(L"Functions = "))
             ParseNames(AfterPrefix(line, L"Functions = "), m_Functions);
         else if (line.starts_with(L"Params = "))

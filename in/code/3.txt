@@ -1,17 +1,19 @@
-UENUM(BlueprintType)
-enum class ESelectionState : uint8
+ASelectable::ASelectable()
 {
-    
+	SceneRoot = CreateDefaultSubobject<USceneComponent>("Scene Root");
+    SetRootComponent(SceneRoot);
 
+    SelectionMesh = CreateDefaultSubobject<UStaticMeshComponent>(L"Selection Mesh");
+	SelectionMesh->SetupAttachment(SceneRoot);
+	SelectionMesh->SetRelativeLocation(FVector(0.0f, 0.0f, 1.0f), false,
+        nullptr, ETeleportType::None);
 
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMeshAsset
+        (L"/Engine/BasicShapes/Plane.Plane");
+    if (PlaneMeshAsset.Succeeded())
+        SelectionMesh->SetStaticMesh(PlaneMeshAsset.Object);
 
-
-
-
-
-
-
-
-
-
-};
+	SelectionMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    SelectionMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+    SelectionMesh->SetGenerateOverlapEvents(false);
+}

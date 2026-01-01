@@ -1,5 +1,7 @@
 #include "SyntaxHighlighter.h"
+
 #include <cwctype>
+#include <regex>
 
 
 SyntaxHighlighter::SyntaxHighlighter(Slide* pSlide) : m_pSlide(pSlide) {}
@@ -7,16 +9,17 @@ SyntaxHighlighter::SyntaxHighlighter(Slide* pSlide) : m_pSlide(pSlide) {}
 
 std::vector<Token> SyntaxHighlighter::Tokenize()
 {
-	std::vector<Token> tokens;
+	m_pSlide->m_Code = std::regex_replace(m_pSlide->m_Code, std::wregex(L"\t"), L"    ");
+
 	while (true)
 	{
 		Token token = Next();
-		tokens.push_back(token);
+		m_Tokens.push_back(token);
 		if (token.type == TokenType::EndOfFile)
 			break;
 	}
 
-	return tokens;
+	return m_Tokens;
 }
 
 Token SyntaxHighlighter::Next()
@@ -412,11 +415,14 @@ Token SyntaxHighlighter::LexIdentifierFamily()
 	if (m_ControlStatements.count(lex))
 		return MakeToken(TokenType::ControlStatement, sp, m_Position);
 
-	if (IsMacroLike(lex))
-		return MakeToken(TokenType::Macro, sp, m_Position);
-	if (IsClassLike(lex))
-		return MakeToken(TokenType::Class, sp, m_Position);
 
+	if (m_Tokens.size() >= 2 && m_Tokens[m_Tokens.size() - 2].type == TokenType::Class && m_Tokens[m_Tokens.size() - 2].Text(m_pSlide->m_Code) == lex)
+		return MakeToken(TokenType::Function, sp, m_Position);
+
+	if (m_pSlide->m_Classes.count(lex))
+		return MakeToken(TokenType::Class, sp, m_Position);
+	if (m_pSlide->m_Macros.count(lex))
+		return MakeToken(TokenType::Macro, sp, m_Position);
 	if (m_pSlide->m_Functions.count(lex))
 		return MakeToken(TokenType::Function, sp, m_Position);
 	if (m_pSlide->m_Params.count(lex))
@@ -425,6 +431,11 @@ Token SyntaxHighlighter::LexIdentifierFamily()
 		return MakeToken(TokenType::LocalVar, sp, m_Position);
 	if (m_pSlide->m_MemberVars.count(lex))
 		return MakeToken(TokenType::MemberVar, sp, m_Position);
+
+	if (IsMacroLike(lex))
+		return MakeToken(TokenType::Macro, sp, m_Position);
+	if (IsClassLike(lex))
+		return MakeToken(TokenType::Class, sp, m_Position);
 
 	return MakeToken(TokenType::EnumVal, sp, m_Position);
 }

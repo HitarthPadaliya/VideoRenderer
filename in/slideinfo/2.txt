@@ -1,6 +1,5 @@
-Header = Selectable.cpp
+Header = Selectable.h
 Duration = 8
 CodeDuration = 5
-Close
 
 MemberVars = SceneRoot, SelectionMesh

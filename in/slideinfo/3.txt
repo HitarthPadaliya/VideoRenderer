@@ -1,0 +1,9 @@
+Header = Selectable.cpp
+Duration = 5
+CodeDuration = 2
+
+Classes = ConstructorHelpers
+Macros = ECR_Ignore
+Functions = CreateDefaultSubobject, SetRootComponent, SetupAttachment, SetRelativeLocation, Succeeded, SetStaticMesh, SetCollisionEnabled, SetCollisionResponseToAllChannels, SetGenerateOverlapEvents
+LocalVars = PlaneMeshAsset
+MemberVars = SceneRoot, SelectionMesh, Object

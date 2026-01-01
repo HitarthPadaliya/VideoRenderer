@@ -82,6 +82,7 @@ struct Token
 class SyntaxHighlighter
 {
 	private:
+		std::vector<Token> m_Tokens;
 		uint32_t m_Position = 0;
 
 		bool m_bOnlyWhitespaceSinceBol	= true;
