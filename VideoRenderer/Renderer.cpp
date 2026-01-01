@@ -27,6 +27,7 @@ Renderer::Renderer(const uint16_t& width, const uint16_t& height)
 Renderer::~Renderer()
 {
     delete m_pSyntaxHighlighter;
+    delete m_pHeaderState;
 
     if (m_COMInitialized)
     {
@@ -107,13 +108,23 @@ bool Renderer::Initialize(Slide* pSlide)
     {
         EndInfo prevEndInfo(pSlide->m_SlideNo - 1);
 
-        // m_StartSize = D2D1::Point2F(384, 216);
-        // m_StartScale = 1;
-        // m_StartY =
-
         m_StartSize = D2D1::Point2F(prevEndInfo.m_WindowX, prevEndInfo.m_WindowY);
         m_StartScale = 1;
         m_StartY = prevEndInfo.m_HeaderY;
+
+        Slide prevSlide(pSlide->m_SlideNo - 1);
+        m_PrevHeader = prevSlide.m_Header;
+
+        if (m_Header.compare(m_PrevHeader) != 0)
+        {
+            std::cout << "Not equal\n";
+
+            m_pHeaderState = new HeaderState();
+            m_pHeaderState->prevPos = D2D1::Point2F(m_HeaderPosition.x, m_StartY);
+            m_pHeaderState->pos = m_HeaderPosition;
+        }
+        else
+            std::cout << "equal\n";
     }
 
     m_MidSize = D2D1::Point2F(m_CodeSize.x + 200, m_CodeSize.y + 300);
@@ -470,11 +481,11 @@ bool Renderer::CreateComputePipeline()
 
 void Renderer::RenderCompute(const float& time, const float& progress01)
 {
-    D2D1_POINT_2F currentSize = m_MidSize;
+    m_CurrentSize = m_MidSize;
     
     if (time <= 0.5f)
     {
-        currentSize = D2D1::Point2F
+        m_CurrentSize = D2D1::Point2F
         (
             std::lerp(m_StartSize.x, m_MidSize.x, EaseOutAEDoubleBack(LerpTime(time, 0, 0.5f))),
             std::lerp(m_StartSize.y, m_MidSize.y, EaseOutAEDoubleBack(LerpTime(time, 0, 0.5f)))
@@ -485,7 +496,7 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
     }
     else if (time >= m_Duration - 0.5f)
     {
-        currentSize = D2D1::Point2F
+        m_CurrentSize = D2D1::Point2F
         (
             std::lerp(m_MidSize.x, m_EndSize.x, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f))),
             std::lerp(m_MidSize.y, m_EndSize.y, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f)))
@@ -493,6 +504,15 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
         m_CurrentScale = std::lerp(1.0f, m_EndScale, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f)));
 
         m_HeaderPosition.y = std::lerp(m_MidY, m_EndY, EaseInAEDoubleBack(LerpTime(time, m_Duration - 0.5f, 0.5f)));
+    }
+
+    if (m_pHeaderState && time <= 0.5f)
+    {
+        m_pHeaderState->prevScale   = std::lerp(1, 0, EaseInOutSine(LerpTime(time, 0, 0.5f)));
+        m_pHeaderState->scale       = std::lerp(0, 1, EaseInOutSine(LerpTime(time, 0, 0.5f)));
+
+        m_pHeaderState->prevOpacity = std::lerp(1, 0, EaseInOutSine(LerpTime(time, 0, 0.5f)));
+        m_pHeaderState->opacity     = std::lerp(0, 1, EaseInOutSine(LerpTime(time, 0, 0.5f)));
     }
 
     D3D11_MAPPED_SUBRESOURCE mapped {};
@@ -504,8 +524,8 @@ void Renderer::RenderCompute(const float& time, const float& progress01)
         c->Resolution[1]    = static_cast<float>(m_Height);
         c->Time             = time;
         c->Scale            = m_CurrentScale;
-        c->rSize[0]         = currentSize.x;
-        c->rSize[1]         = currentSize.y;
+        c->rSize[0]         = m_CurrentSize.x;
+        c->rSize[1]         = m_CurrentSize.y;
         c->rSizeInitial[0]  = 0;
         c->rSizeInitial[1]  = 0;
         m_pD3DContext->Unmap(m_pCSConstants.Get(), 0);
@@ -606,28 +626,43 @@ void Renderer::DrawHeader()
     if (!m_pHeaderLayout)
         return;
 
-    // DWRITE_TEXT_METRICS mcode{};
-    // m_pCodeLayout = GetTextMetrics(&mcode, m_Code);
-    // m_CodePosition = D2D1::Point2F
-    // (
-    //     (3840 - mcode.width) * 0.5f - mcode.left,
-    //     (2160 - mcode.height) * 0.5f - mcode.top + 50.0f
-    // );
-    // m_CodeSize = D2D1::Point2F(mcode.width, mcode.height);
-
     if (m_CurrentScale == 0)
         return;
 
-    DWRITE_TEXT_METRICS mheader{};
-    auto layout = GetTextMetrics(&mheader, m_Header, L"Segoe UI", 60 * m_CurrentScale);
-    m_HeaderPosition.x = (3840 - mheader.width) * 0.5f - mheader.left;
-    // m_HeaderPosition = D2D1::Point2F
-    // (
-    //     (3840 - mheader.width) * 0.5f - mheader.left,
-    //     (2160 - mcode.height - mheader.height - 200) * 0.5f - mheader.top + 50.0f
-    // );
+    float scale = m_pHeaderState ? m_pHeaderState->scale : 1.0f;
+    scale *= m_CurrentScale;
 
-    DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f), m_HeaderPosition);
+    DWRITE_TEXT_METRICS mheader {};
+    Microsoft::WRL::ComPtr<IDWriteTextLayout> layout = nullptr;
+    float y = m_HeaderPosition.y;
+
+    if (scale != 0)
+    {
+        layout = GetTextMetrics(&mheader, m_Header, L"Segoe UI", 60 * scale);
+        m_HeaderPosition.x = (3840 - mheader.width) * 0.5f - mheader.left;
+        m_HeaderPosition.y += mheader.height / 2 * (1.0f - scale);
+
+        m_HeaderPosition.y = 1080 - m_CurrentSize.y * 0.5f + 100 - mheader.height * 0.5f;
+
+        float opacity = m_pHeaderState ? m_pHeaderState->opacity : 1;
+        DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, opacity), m_HeaderPosition);
+    }
+
+    if (!m_pHeaderState || m_pHeaderState->prevScale == 0)
+    {
+        m_HeaderPosition.y = y;
+        return;
+    }
+
+    layout = GetTextMetrics(&mheader, m_PrevHeader, L"Segoe UI", 60 * m_pHeaderState->prevScale);
+    m_pHeaderState->prevPos.x = (3840 - mheader.width) * 0.5f - mheader.left;
+    m_pHeaderState->prevPos.y = m_HeaderPosition.y;
+
+    m_pHeaderState->prevPos.y = 1080 - m_CurrentSize.y * 0.5f + 100 - mheader.height * 0.5f;
+
+    DrawTextFromLayout(layout, D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, m_pHeaderState->prevOpacity), m_pHeaderState->prevPos);
+
+    m_HeaderPosition.y = y;
 }
 
 void Renderer::DrawCode()

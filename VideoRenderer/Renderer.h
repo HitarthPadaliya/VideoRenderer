@@ -40,6 +40,17 @@ struct CharState
     bool bIsNewline;
 };
 
+struct HeaderState
+{
+    D2D1_POINT_2F prevPos;
+    float prevScale = 1;
+    float prevOpacity = 1;
+
+    D2D1_POINT_2F pos;
+    float scale = 0;
+    float opacity = 0;
+};
+
 
 class Renderer
 {
@@ -72,6 +83,8 @@ class Renderer
 
         D2D1_POINT_2F m_HeaderPosition;
         std::wstring m_Header;
+        std::wstring m_PrevHeader;
+        HeaderState* m_pHeaderState;
         std::wstring m_Code;
         float m_CodeDuration = 0.0f;
         D2D1_POINT_2F m_CodePosition;
@@ -94,6 +107,7 @@ class Renderer
         D2D1_POINT_2F m_StartSize;
         D2D1_POINT_2F m_MidSize;
         D2D1_POINT_2F m_EndSize;
+        D2D1_POINT_2F m_CurrentSize;
         float m_StartY  = 1080;
         float m_MidY    = 1080;
         float m_EndY    = 1080;

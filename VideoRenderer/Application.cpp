@@ -77,41 +77,6 @@ void Application::Run()
 
 void Application::RenderOverlay(const uint32_t& frameNumber)
 {
-    /* D2D1_RECT_F titleRect = D2D1::RectF(50.0f, 30.0f, (float)m_Width - 50.0f, 120.0f);
-    m_pRenderer->DrawText
-    (
-        L"Compute Shader (RGBA16F) -> Direct2D text -> libavcodec NVENC -> HEVC Main10\nHello another line\nFinal line",
-        titleRect,
-        D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f),
-        L"Consolas ligaturized v3",
-        32.0f,
-        DWRITE_FONT_WEIGHT_BOLD
-    );
-
-    std::wstring frameText
-        = L"Frame: " + std::to_wstring(frameNumber) + L" / " + std::to_wstring(m_TotalFrames);
-    D2D1_RECT_F counterRect
-        = D2D1::RectF(50.0f, (float)m_Height - 80.0f, (float)m_Width - 50.0f, (float)m_Height - 20.0f);
-
-    m_pRenderer->DrawText
-    (
-        frameText,
-        counterRect,
-        D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f),
-        L"Consolas ligaturized v3",
-        28.0f
-    );*/
-
     m_pRenderer->DrawHeader();
     m_pRenderer->DrawCode();
-
-    /*std::wstring code = L"UENUM(BlueprintType)\nenum class ESelectionState : uint8\n{\n\tNone,\n\tHovered,\n\tSelected\n};";
-
-    m_pRenderer->DrawTextCentered
-    (
-        code,
-        D2D1::ColorF(0.7059f, 0.7059f, 0.7059f, 1.0f),
-        L"Consolas ligaturized v3",
-        72.0f
-    );*/
 }
