@@ -59,6 +59,8 @@ class Renderer
         uint16_t m_Height = 0;
         bool m_COMInitialized = false;
 
+        Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_pReusableBrush;
+
         Microsoft::WRL::ComPtr<ID3D11Device> m_pD3DDevice;
         Microsoft::WRL::ComPtr<ID3D11DeviceContext> m_pD3DContext;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> m_pRenderTex;
@@ -86,7 +88,7 @@ class Renderer
         D2D1_POINT_2F m_HeaderPosition;
         std::wstring m_Header;
         std::wstring m_PrevHeader;
-        HeaderState* m_pHeaderState;
+        HeaderState* m_pHeaderState = nullptr;
         std::wstring m_Code;
         float m_CodeDuration = 0.0f;
         D2D1_POINT_2F m_CodePosition;
@@ -129,25 +131,6 @@ class Renderer
     
         void DrawHeader();
         void DrawCode();
-
-        void DrawText
-        (
-            const std::wstring& text,
-            const D2D1_RECT_F& rect,
-            const D2D1::ColorF& color,
-            const std::wstring& fontFamily = L"Consolas ligaturized v3",
-            const float& fontSize = 72.0f,
-            const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
-        );
-
-        void DrawTextCentered
-        (
-            const std::wstring& text,
-            const D2D1::ColorF& color,
-            const std::wstring& fontFamily = L"Consolas ligaturized v3",
-            const float& fontSize = 24.0f,
-            const DWRITE_FONT_WEIGHT& weight = DWRITE_FONT_WEIGHT_NORMAL
-        );
 
         void DrawTextFromLayout
         (

@@ -22,6 +22,7 @@ Renderer::Renderer(const uint16_t& width, const uint16_t& height)
     , m_StartSize(0, 0)
     , m_MidSize(0, 0)
     , m_EndSize(0, 0)
+    , m_CurrentSize(0, 0)
 {}
 
 Renderer::~Renderer()
@@ -191,7 +192,6 @@ bool Renderer::InitBrushes()
         return false;
     }
 
-
     hr = m_pD2DContext->CreateSolidColorBrush(Colors::Keyword, &Brushes::Keyword);
     if (FAILED(hr))
     {
@@ -234,7 +234,6 @@ bool Renderer::InitBrushes()
         return false;
     }
 
-
     hr = m_pD2DContext->CreateSolidColorBrush(Colors::Number, &Brushes::Number);
     if (FAILED(hr))
     {
@@ -256,11 +255,17 @@ bool Renderer::InitBrushes()
         return false;
     }
 
-
     hr = m_pD2DContext->CreateSolidColorBrush(Colors::Other, &Brushes::Other);
     if (FAILED(hr))
     {
         PrintHR("CreateSolidColorBrush for Other", hr);
+        return false;
+    }
+
+    hr = m_pD2DContext->CreateSolidColorBrush(Colors::Other, &m_pReusableBrush);
+    if (FAILED(hr))
+    {
+        PrintHR("CreateSolidColorBrush for reusable brush", hr);
         return false;
     }
 
@@ -303,7 +308,7 @@ bool Renderer::CreateDevices()
         return false;
     }
 
-    D2D1_FACTORY_OPTIONS fo{};
+    D2D1_FACTORY_OPTIONS fo {};
 #if defined(_DEBUG)
     fo.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
 #endif
@@ -672,94 +677,6 @@ void Renderer::DrawCode()
 }
 
 
-void Renderer::DrawText
-(
-    const std::wstring& text,
-    const D2D1_RECT_F& rect,
-    const D2D1::ColorF& color,
-    const std::wstring& fontFamily,
-    const float& fontSize,
-    const DWRITE_FONT_WEIGHT& weight
-)
-{
-    CreateTextFormat(fontFamily, fontSize, weight);
-    if (!m_pCurrentTextFormat)
-        return;
-
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
-    HRESULT hr = m_pD2DContext->CreateSolidColorBrush(color, &brush);
-    if (FAILED(hr))
-    {
-        PrintHR("CreateSolidColorBrush", hr);
-        return;
-    }
-
-    m_pD2DContext->DrawText
-    (
-        text.c_str(),
-        static_cast<UINT32>(text.size()),
-        m_pCurrentTextFormat.Get(),
-        rect,
-        brush.Get()
-    );
-}
-
-void Renderer::DrawTextCentered
-(
-    const std::wstring& text,
-    const D2D1::ColorF& color,
-    const std::wstring& fontFamily,
-    const float& fontSize,
-    const DWRITE_FONT_WEIGHT& weight
-)
-{
-    CreateTextFormat(fontFamily, fontSize, weight);
-    if (!m_pCurrentTextFormat)
-        return;
-
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
-    HRESULT hr = m_pD2DContext->CreateSolidColorBrush(color, &brush);
-    if (FAILED(hr))
-    {
-        PrintHR("CreateSolidColorBrush", hr);
-        return;
-    }
-
-    Microsoft::WRL::ComPtr<IDWriteTextLayout> layout;
-    hr = m_pDWriteFactory->CreateTextLayout
-    (
-        text.c_str(),
-        static_cast<UINT32>(text.size()),
-        m_pCurrentTextFormat.Get(),
-        3600,
-        1900,
-        &layout
-    );
-    if (FAILED(hr) || !layout)
-    {
-        PrintHR("CreateTextLayout", hr);
-        return;
-    }
-
-    DWRITE_TEXT_METRICS m{};
-    hr = layout->GetMetrics(&m);
-    if (FAILED(hr))
-    {
-        PrintHR("GetMetrics", hr);
-        return;
-    }
-
-    const float x = (3840 - m.width) * 0.5f - m.left;
-    const float y = (2160 - m.height) * 0.5f - m.top;
-
-    m_pD2DContext->DrawTextLayout
-    (
-        D2D1::Point2F(x, y + 75),
-        layout.Get(),
-        brush.Get()
-    );
-}
-
 void Renderer::DrawTextFromLayout
 (
     const Microsoft::WRL::ComPtr<IDWriteTextLayout>& layout,
@@ -767,19 +684,16 @@ void Renderer::DrawTextFromLayout
     const D2D1_POINT_2F& position
 )
 {
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
-    HRESULT hr = m_pD2DContext->CreateSolidColorBrush(color, &brush);
-    if (FAILED(hr))
-    {
-        PrintHR("CreateSolidColorBrush", hr);
+    if (!layout || !m_pReusableBrush)
         return;
-    }
+
+    m_pReusableBrush->SetColor(color);
 
     m_pD2DContext->DrawTextLayout
     (
         D2D1::Point2F(position.x, position.y),
         layout.Get(),
-        brush.Get()
+        m_pReusableBrush.Get()
     );
 }
 
@@ -942,15 +856,17 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
         return;
 
     const float fadeDur = 0.01f;
+
     auto CharProgress01 = [&](uint32_t i) -> float
     {
         const float s = m_CharStates[i].start;
-        
+
         if (m_CharStates[i].bIsWhitespace || m_CharStates[i].bIsNewline)
             return (animProgress >= s) ? 1.0f : 0.0f;
+
         if (animProgress <= s)
             return 0.0f;
-        
+
         float p = (animProgress - s) / fadeDur;
         return std::clamp(p, 0.0f, 1.0f);
     };
@@ -983,7 +899,6 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
 
                 if (token.length == 0)
                     continue;
-
                 if (ts >= prefixLen)
                     continue;
 
@@ -998,15 +913,16 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
                 }
             }
 
-            Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> dummy;
-            m_pD2DContext->CreateSolidColorBrush(Colors::Other, &dummy);
-
-            m_pD2DContext->DrawTextLayout
-            (
-                D2D1::Point2F(m_CodePosition.x, m_CodePosition.y),
-                prefixLayout.Get(),
-                dummy.Get()
-            );
+            if (m_pReusableBrush)
+            {
+                m_pReusableBrush->SetColor(Colors::Other);
+                m_pD2DContext->DrawTextLayout
+                (
+                    D2D1::Point2F(m_CodePosition.x, m_CodePosition.y),
+                    prefixLayout.Get(),
+                    m_pReusableBrush.Get()
+                );
+            }
         }
     }
 
@@ -1028,14 +944,12 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
     Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> baseBrush;
     {
         Microsoft::WRL::ComPtr<IUnknown> unk = Brushes::Other;
-
         for (const Token& token : m_Tokens)
         {
             const uint32_t ts = token.start;
             const uint32_t te = token.start + token.length;
             if (token.length == 0)
                 continue;
-
             if (prefixLen >= ts && prefixLen < te)
             {
                 unk = SyntaxHighlighter::GetBrush(token);
@@ -1044,24 +958,24 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
         }
 
         unk.As(&baseBrush);
-        if (!baseBrush)
-            m_pD2DContext->CreateSolidColorBrush(Colors::Other, &baseBrush);
     }
+
+    if (!baseBrush)
+        baseBrush = Brushes::Other;
+
+    if (!baseBrush || !m_pReusableBrush)
+        return;
 
     D2D1_COLOR_F c = baseBrush->GetColor();
     c.a *= alpha;
 
-    Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> fadeBrush;
-    hr = m_pD2DContext->CreateSolidColorBrush(c, &fadeBrush);
-    if (FAILED(hr) || !fadeBrush)
-        return;
+    m_pReusableBrush->SetColor(c);
 
     const wchar_t ch = m_Code[prefixLen];
     if (ch == L'\n' || ch == L' ' || ch == L'\t')
         return;
 
     const std::wstring one(1, ch);
-
     Microsoft::WRL::ComPtr<IDWriteTextLayout> oneLayout;
     hr = m_pDWriteFactory->CreateTextLayout
     (
@@ -1072,18 +986,17 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
         std::max(1.0f, hit.height),
         &oneLayout
     );
-
     if (FAILED(hr) || !oneLayout)
         return;
 
-    DWRITE_TEXT_RANGE r { 0, 1 };
-    oneLayout->SetDrawingEffect(fadeBrush.Get(), r);
+    DWRITE_TEXT_RANGE r{ 0, 1 };
+    oneLayout->SetDrawingEffect(m_pReusableBrush.Get(), r);
 
     m_pD2DContext->DrawTextLayout
     (
         D2D1::Point2F(m_CodePosition.x + hitX, m_CodePosition.y + hitY),
         oneLayout.Get(),
-        fadeBrush.Get()
+        m_pReusableBrush.Get()
     );
 }
 

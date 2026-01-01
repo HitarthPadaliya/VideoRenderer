@@ -1,6 +1,6 @@
 Header = Selectable.cpp
-Duration = 5
-CodeDuration = 2
+Duration = 35.5
+CodeDuration = 23.5
 
 Classes = ConstructorHelpers
 Macros = ECR_Ignore

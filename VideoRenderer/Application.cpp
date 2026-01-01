@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <chrono>
+
 
 Application::Application
 (
@@ -40,8 +42,11 @@ bool Application::Initialize(const std::string& outputPath, Slide* pSlide)
 
 void Application::Run()
 {
+    using clock = std::chrono::high_resolution_clock;
+    auto t0 = clock::now();
+
     std::cout << "\nRendering " << m_TotalFrames << " frames...\n";
-    for (int frame = 0; frame < m_TotalFrames; ++frame)
+    for (int frame = 1; frame <= m_TotalFrames; ++frame)
     {
         float t = static_cast<float>(frame) / static_cast<float>(m_FPS);
         float p = static_cast<float>(frame) / static_cast<float>(m_TotalFrames);
@@ -58,10 +63,13 @@ void Application::Run()
             break;
         }
 
-        uint8_t percent = (float)(frame + 1) / m_TotalFrames * 100;
+        if (frame % 30 != 0)
+            continue;
+
+        uint8_t percent = (float)frame / m_TotalFrames * 100;
         
         std::cout << "\r";
-        std::cout << frame + 1 << '/' << m_TotalFrames << ' ' << (int)percent << "%  \t[";
+        std::cout << frame << '/' << m_TotalFrames << ' ' << (int)percent << "%  \t[";
         for (uint8_t p = 1; p <= percent; ++p)
             std::cout << (char)254u;
         for (uint8_t p = percent; p < 100; ++p)
@@ -72,6 +80,11 @@ void Application::Run()
     std::cout << '\n';
     m_pEncoder->Finalize();
     std::cout << "\nVideo rendering complete!\n";
+
+    auto t1 = clock::now();
+    double seconds = std::chrono::duration<double>(t1 - t0).count();
+
+    std::cout << "Total render time: " << seconds << " s\n";
 }
 
 
