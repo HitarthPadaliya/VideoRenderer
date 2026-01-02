@@ -788,6 +788,9 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
 bool Renderer::CreateDevices()
 {
     UINT deviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#if defined(_DEBUG)
+    deviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
 
     D3D_FEATURE_LEVEL levels[] =
     {
@@ -817,6 +820,9 @@ bool Renderer::CreateDevices()
     }
 
     D2D1_FACTORY_OPTIONS fo{};
+#if defined(_DEBUG)
+    fo.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+#endif
 
     hr = D2D1CreateFactory(
         D2D1_FACTORY_TYPE_SINGLE_THREADED,
@@ -932,7 +938,12 @@ bool Renderer::CreateD2DTargets()
 
 bool Renderer::CreateComputePipeline()
 {
-    UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
+    UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
+#if defined(_DEBUG)
+    flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+    flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
 
     Microsoft::WRL::ComPtr<ID3DBlob> csBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> errBlob;
