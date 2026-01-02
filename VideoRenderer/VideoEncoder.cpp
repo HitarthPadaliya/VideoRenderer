@@ -1,28 +1,32 @@
 #include "VideoEncoder.h"
 
+#include <d3dcompiler.h>
 #include <iostream>
 #include <cstring>
 
 #pragma comment(lib, "d3dcompiler.lib")
 
-VideoEncoder::VideoEncoder(
+
+VideoEncoder::VideoEncoder
+(
     const std::string& outputPath,
     const uint16_t& width,
     const uint16_t& height,
     const uint8_t& fps,
-    const uint32_t& bitrate)
+    const uint32_t& bitrate
+)
     : m_OutputPath(outputPath)
     , m_Width(width)
     , m_Height(height)
     , m_FPS(fps)
     , m_Bitrate(bitrate)
-{
-}
+{}
 
 VideoEncoder::~VideoEncoder()
 {
     Finalize();
 }
+
 
 bool VideoEncoder::Initialize(ID3D11Device* pD3D11Device)
 {
@@ -32,8 +36,7 @@ bool VideoEncoder::Initialize(ID3D11Device* pD3D11Device)
     m_pD3D11Device = pD3D11Device;
     pD3D11Device->GetImmediateContext(&m_pD3D11Context);
 
-    HRESULT hr = pD3D11Device->QueryInterface(
-        __uuidof(ID3D11Device3),
+    HRESULT hr = pD3D11Device->QueryInterface(__uuidof(ID3D11Device3),
         (void**)m_pD3D11Device3.ReleaseAndGetAddressOf());
     if (FAILED(hr) || !m_pD3D11Device3)
     {
@@ -111,12 +114,12 @@ bool VideoEncoder::InitializeHardwareContext(ID3D11Device* pD3D11Device)
         return false;
     }
 
-    AVHWFramesContext* framesCtx = (AVHWFramesContext*)m_pHWFramesCtx->data;
-    framesCtx->format = AV_PIX_FMT_D3D11;
-    framesCtx->sw_format = AV_PIX_FMT_P010LE;
-    framesCtx->width = m_Width;
-    framesCtx->height = m_Height;
-    framesCtx->initial_pool_size = 0;
+    AVHWFramesContext* framesCtx    = (AVHWFramesContext*)m_pHWFramesCtx->data;
+    framesCtx->format               = AV_PIX_FMT_D3D11;
+    framesCtx->sw_format            = AV_PIX_FMT_P010LE;
+    framesCtx->width                = m_Width;
+    framesCtx->height               = m_Height;
+    framesCtx->initial_pool_size    = 0;
 
     ret = av_hwframe_ctx_init(m_pHWFramesCtx);
     if (ret < 0)
@@ -134,16 +137,16 @@ bool VideoEncoder::InitializeHardwareContext(ID3D11Device* pD3D11Device)
 bool VideoEncoder::InitializeConverter()
 {
     D3D11_TEXTURE2D_DESC texDesc{};
-    texDesc.Width = (UINT)m_Width;
-    texDesc.Height = (UINT)m_Height;
-    texDesc.MipLevels = 1;
-    texDesc.ArraySize = 1;
-    texDesc.Format = DXGI_FORMAT_P010;
-    texDesc.SampleDesc.Count = 1;
-    texDesc.Usage = D3D11_USAGE_DEFAULT;
-    texDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-    texDesc.CPUAccessFlags = 0;
-    texDesc.MiscFlags = 0;
+    texDesc.Width               = (UINT)m_Width;
+    texDesc.Height              = (UINT)m_Height;
+    texDesc.MipLevels           = 1;
+    texDesc.ArraySize           = 1;
+    texDesc.Format              = DXGI_FORMAT_P010;
+    texDesc.SampleDesc.Count    = 1;
+    texDesc.Usage               = D3D11_USAGE_DEFAULT;
+    texDesc.BindFlags           = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+    texDesc.CPUAccessFlags      = 0;
+    texDesc.MiscFlags           = 0;
 
     HRESULT hr = m_pD3D11Device->CreateTexture2D(&texDesc, nullptr, &m_pP010Texture);
     if (FAILED(hr))
@@ -152,28 +155,28 @@ bool VideoEncoder::InitializeConverter()
         return false;
     }
 
-    D3D11_UNORDERED_ACCESS_VIEW_DESC1 uavY{};
-    uavY.Format = DXGI_FORMAT_R16_UINT;
-    uavY.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-    uavY.Texture2D.MipSlice = 0;
-    uavY.Texture2D.PlaneSlice = 0;
+    D3D11_UNORDERED_ACCESS_VIEW_DESC1 uavY {};
+    uavY.Format                 = DXGI_FORMAT_R16_UINT;
+    uavY.ViewDimension          = D3D11_UAV_DIMENSION_TEXTURE2D;
+    uavY.Texture2D.MipSlice     = 0;
+    uavY.Texture2D.PlaneSlice   = 0;
 
-    hr = m_pD3D11Device3->CreateUnorderedAccessView1(
-        m_pP010Texture.Get(), &uavY, m_pOutputUAV_Y.ReleaseAndGetAddressOf());
+    hr = m_pD3D11Device3->CreateUnorderedAccessView1(m_pP010Texture.Get(), &uavY,
+        m_pOutputUAV_Y.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         std::cerr << "Failed to create UAV (Y plane): 0x" << std::hex << hr << std::dec << "\n";
         return false;
     }
 
-    D3D11_UNORDERED_ACCESS_VIEW_DESC1 uavUV{};
-    uavUV.Format = DXGI_FORMAT_R16G16_UINT;
-    uavUV.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-    uavUV.Texture2D.MipSlice = 0;
-    uavUV.Texture2D.PlaneSlice = 1;
+    D3D11_UNORDERED_ACCESS_VIEW_DESC1 uavUV {};
+    uavUV.Format                = DXGI_FORMAT_R16G16_UINT;
+    uavUV.ViewDimension         = D3D11_UAV_DIMENSION_TEXTURE2D;
+    uavUV.Texture2D.MipSlice    = 0;
+    uavUV.Texture2D.PlaneSlice  = 1;
 
-    hr = m_pD3D11Device3->CreateUnorderedAccessView1(
-        m_pP010Texture.Get(), &uavUV, m_pOutputUAV_UV.ReleaseAndGetAddressOf());
+    hr = m_pD3D11Device3->CreateUnorderedAccessView1(m_pP010Texture.Get(), &uavUV,
+        m_pOutputUAV_UV.ReleaseAndGetAddressOf());
     if (FAILED(hr))
     {
         std::cerr << "Failed to create UAV (UV plane): 0x" << std::hex << hr << std::dec << "\n";
@@ -181,8 +184,9 @@ bool VideoEncoder::InitializeConverter()
     }
 
     const char* csCode = R"(
-Texture2D InputTexture : register(t0);
-RWTexture2D<uint> OutY : register(u0);
+Texture2D<float4> InputTexture : register(t0);
+
+RWTexture2D<uint>  OutY  : register(u0);
 RWTexture2D<uint2> OutUV : register(u1);
 
 cbuffer Constants : register(b0)
@@ -230,17 +234,16 @@ uint PackP010_10bitCode(uint code10)
     return (code10 & 1023u) << 6;
 }
 
-void RGBToYCbCr709_Prime(float3 rgbIn,
-                         out precise float Y,
-                         out precise float Cb,
-                         out precise float Cr)
+void RGBToYCbCr709_Prime(float3 rgbIn, out precise float Y, out precise float Cb, out precise float Cr)
 {
     precise float3 rgbp = saturate(ToRec709Prime(rgbIn));
+
     const precise float Kr = 0.2126;
     const precise float Kb = 0.0722;
     const precise float Kg = 1.0 - Kr - Kb;
 
-    Y  = Kr * rgbp.r + Kg * rgbp.g + Kb * rgbp.b;
+    Y = Kr * rgbp.r + Kg * rgbp.g + Kb * rgbp.b;
+
     Cb = (rgbp.b - Y) / (2.0 * (1.0 - Kb)); // == / 1.8556
     Cr = (rgbp.r - Y) / (2.0 * (1.0 - Kr)); // == / 1.5748
 }
@@ -288,51 +291,43 @@ void CSMain(uint3 tid : SV_DispatchThreadID)
     Microsoft::WRL::ComPtr<ID3DBlob> csBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> errBlob;
 
-    hr = D3DCompile(csCode, std::strlen(csCode),
-        nullptr, nullptr, nullptr,
-        "CSMain", "cs_5_0",
-        0, 0,
-        &csBlob, &errBlob);
+    hr = D3DCompile(csCode, std::strlen(csCode), nullptr, nullptr, nullptr,
+        "CSMain", "cs_5_0", 0, 0, &csBlob, &errBlob);
     if (FAILED(hr))
     {
         if (errBlob)
-            std::cerr << "CS compile error: "
-            << (const char*)errBlob->GetBufferPointer() << "\n";
-        std::cerr << "Failed to compile compute shader: 0x"
-            << std::hex << hr << std::dec << "\n";
+            std::cerr << "CS compile error: " << (const char*)errBlob->GetBufferPointer() << "\n";
+        std::cerr << "Failed to compile compute shader: 0x" << std::hex << hr << std::dec << "\n";
         return false;
     }
 
-    hr = m_pD3D11Device->CreateComputeShader(
-        csBlob->GetBufferPointer(), csBlob->GetBufferSize(),
+    hr = m_pD3D11Device->CreateComputeShader(csBlob->GetBufferPointer(), csBlob->GetBufferSize(),
         nullptr, &m_pConvertCS);
     if (FAILED(hr))
     {
-        std::cerr << "Failed to create compute shader: 0x"
-            << std::hex << hr << std::dec << "\n";
+        std::cerr << "Failed to create compute shader: 0x" << std::hex << hr << std::dec << "\n";
         return false;
     }
 
-    ConvertConstants c{};
-    c.m_Resolution[0] = m_Width;
-    c.m_Resolution[1] = m_Height;
-    c.m_Padding[0] = 0;
-    c.m_Padding[1] = 0;
+    ConvertConstants c {};
+    c.m_Resolution[0]   = m_Width;
+    c.m_Resolution[1]   = m_Height;
+    c.m_Padding[0]      = 0;
+    c.m_Padding[1]      = 0;
 
-    D3D11_BUFFER_DESC cbDesc{};
-    cbDesc.ByteWidth = sizeof(ConvertConstants);
-    cbDesc.Usage = D3D11_USAGE_IMMUTABLE;
-    cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    cbDesc.CPUAccessFlags = 0;
+    D3D11_BUFFER_DESC cbDesc {};
+    cbDesc.ByteWidth        = sizeof(ConvertConstants);
+    cbDesc.Usage            = D3D11_USAGE_IMMUTABLE;
+    cbDesc.BindFlags        = D3D11_BIND_CONSTANT_BUFFER;
+    cbDesc.CPUAccessFlags   = 0;
 
-    D3D11_SUBRESOURCE_DATA initData{};
+    D3D11_SUBRESOURCE_DATA initData {};
     initData.pSysMem = &c;
 
     hr = m_pD3D11Device->CreateBuffer(&cbDesc, &initData, &m_pConvertConstants);
     if (FAILED(hr))
     {
-        std::cerr << "Failed to create immutable constant buffer: 0x"
-            << std::hex << hr << std::dec << "\n";
+        std::cerr << "Failed to create immutable constant buffer: 0x" << std::hex << hr << std::dec << "\n";
         return false;
     }
 
@@ -350,17 +345,15 @@ bool VideoEncoder::EnsureInputSRV(ID3D11Texture2D* pRGBATexture)
 
     m_pCachedInputTex.Reset();
     m_pInputSRV.Reset();
-
     m_pCachedInputTex = pRGBATexture;
 
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-    srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = 1;
-    srvDesc.Texture2D.MostDetailedMip = 0;
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc {};
+    srvDesc.Format                      = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    srvDesc.ViewDimension               = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels         = 1;
+    srvDesc.Texture2D.MostDetailedMip   = 0;
 
-    HRESULT hr = m_pD3D11Device->CreateShaderResourceView(
-        pRGBATexture, &srvDesc, &m_pInputSRV);
+    HRESULT hr = m_pD3D11Device->CreateShaderResourceView(pRGBATexture, &srvDesc, &m_pInputSRV);
     if (FAILED(hr))
     {
         std::cerr << "Failed to create SRV: 0x" << std::hex << hr << std::dec << "\n";
@@ -387,10 +380,7 @@ ID3D11Texture2D* VideoEncoder::ConvertToP010(ID3D11Texture2D* pRGBATexture)
     ID3D11Buffer* cbs[] = { m_pConvertConstants.Get() };
     m_pD3D11Context->CSSetConstantBuffers(0, 1, cbs);
 
-    m_pD3D11Context->Dispatch(
-        ((m_Width + 31) / 32),
-        ((m_Height + 31) / 32),
-        1);
+    m_pD3D11Context->Dispatch(((m_Width + 31) / 32), ((m_Height + 31) / 32), 1);
 
     ID3D11ShaderResourceView* nullSRV[] = { nullptr };
     m_pD3D11Context->CSSetShaderResources(0, 1, nullSRV);
@@ -422,18 +412,17 @@ bool VideoEncoder::InitializeEncoder()
         return false;
     }
 
-    m_pCodecCtx->width = m_Width;
-    m_pCodecCtx->height = m_Height;
-    m_pCodecCtx->time_base = AVRational{ 1, m_FPS };
-    m_pCodecCtx->framerate = AVRational{ m_FPS, 1 };
-    m_pCodecCtx->pix_fmt = AV_PIX_FMT_D3D11;
-    m_pCodecCtx->bit_rate = m_Bitrate;
-    m_pCodecCtx->hw_frames_ctx = av_buffer_ref(m_pHWFramesCtx);
-
-    m_pCodecCtx->color_range = AVCOL_RANGE_MPEG;
-    m_pCodecCtx->colorspace = AVCOL_SPC_BT709;
-    m_pCodecCtx->color_primaries = AVCOL_PRI_BT709;
-    m_pCodecCtx->color_trc = AVCOL_TRC_BT709;
+    m_pCodecCtx->width              = m_Width;
+    m_pCodecCtx->height             = m_Height;
+    m_pCodecCtx->time_base          = AVRational { 1, m_FPS };
+    m_pCodecCtx->framerate          = AVRational { m_FPS, 1 };
+    m_pCodecCtx->pix_fmt            = AV_PIX_FMT_D3D11;
+    m_pCodecCtx->bit_rate           = m_Bitrate;
+    m_pCodecCtx->hw_frames_ctx      = av_buffer_ref(m_pHWFramesCtx);
+    m_pCodecCtx->color_range        = AVCOL_RANGE_MPEG;
+    m_pCodecCtx->colorspace         = AVCOL_SPC_BT709;
+    m_pCodecCtx->color_primaries    = AVCOL_PRI_BT709;
+    m_pCodecCtx->color_trc          = AVCOL_TRC_BT709;
 
     av_opt_set(m_pCodecCtx->priv_data, "preset", "p7", 0);
     av_opt_set(m_pCodecCtx->priv_data, "tune", "hq", 0);
@@ -451,21 +440,12 @@ bool VideoEncoder::InitializeEncoder()
         return false;
     }
 
-    // Allocate reusable packet once
-    m_pPacket = av_packet_alloc();
-    if (!m_pPacket)
-    {
-        std::cerr << "Failed to allocate reusable AVPacket\n";
-        return false;
-    }
-
     return true;
 }
 
 bool VideoEncoder::InitializeMuxer()
 {
-    int ret = avformat_alloc_output_context2(
-        &m_pFormatCtx, nullptr, nullptr, m_OutputPath.c_str());
+    int ret = avformat_alloc_output_context2(&m_pFormatCtx, nullptr, nullptr, m_OutputPath.c_str());
     if (!m_pFormatCtx)
     {
         std::cerr << "Failed to allocate output format context\n";
@@ -518,25 +498,24 @@ AVFrame* VideoEncoder::WrapD3D11Texture(ID3D11Texture2D* pTexture)
     if (!frame)
         return nullptr;
 
-    frame->format = AV_PIX_FMT_D3D11;
-    frame->width = m_Width;
-    frame->height = m_Height;
-    frame->hw_frames_ctx = av_buffer_ref(m_pHWFramesCtx);
-
-    frame->data[0] = (uint8_t*)pTexture;
-    frame->data[1] = 0;
+    frame->format           = AV_PIX_FMT_D3D11;
+    frame->width            = m_Width;
+    frame->height           = m_Height;
+    frame->hw_frames_ctx    = av_buffer_ref(m_pHWFramesCtx);
+    frame->data[0]          = (uint8_t*)pTexture;
+    frame->data[1]          = 0;
 
     pTexture->AddRef();
-    frame->buf[0] = av_buffer_create(
-        (uint8_t*)pTexture,
-        0,
+    frame->buf[0] = av_buffer_create
+    (
+        (uint8_t*)pTexture, 0,
         [](void*, uint8_t* data)
         {
             ID3D11Texture2D* tex = (ID3D11Texture2D*)data;
             tex->Release();
         },
-        nullptr,
-        0);
+        nullptr, 0
+    );
 
     frame->pts = m_FrameCount++;
     return frame;
@@ -580,6 +559,7 @@ bool VideoEncoder::EncodeFrame(ID3D11Texture2D* pRGBATexture)
 
     int ret = avcodec_send_frame(m_pCodecCtx, frame);
     av_frame_free(&frame);
+
     if (ret < 0)
     {
         char errbuf[AV_ERROR_MAX_STRING_SIZE]{};
@@ -588,18 +568,17 @@ bool VideoEncoder::EncodeFrame(ID3D11Texture2D* pRGBATexture)
         return false;
     }
 
-    if (!m_pPacket)
+    AVPacket* pkt = av_packet_alloc();
+    if (!pkt)
     {
-        std::cerr << "EncodeFrame called without initialized packet\n";
+        std::cerr << "Failed to allocate packet\n";
         return false;
     }
 
-    // Reuse packet: clear any previous data
-    av_packet_unref(m_pPacket);
-
     while (true)
     {
-        ret = avcodec_receive_packet(m_pCodecCtx, m_pPacket);
+        ret = avcodec_receive_packet(m_pCodecCtx, pkt);
+
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
         {
             break;
@@ -609,18 +588,21 @@ bool VideoEncoder::EncodeFrame(ID3D11Texture2D* pRGBATexture)
             char errbuf[AV_ERROR_MAX_STRING_SIZE]{};
             av_strerror(ret, errbuf, sizeof(errbuf));
             std::cerr << "Error receiving packet: " << errbuf << "\n";
+            av_packet_free(&pkt);
             return false;
         }
 
-        if (!WritePacket(m_pPacket))
+        if (!WritePacket(pkt))
         {
-            av_packet_unref(m_pPacket);
+            av_packet_unref(pkt);
+            av_packet_free(&pkt);
             return false;
         }
 
-        av_packet_unref(m_pPacket);
+        av_packet_unref(pkt);
     }
 
+    av_packet_free(&pkt);
     return true;
 }
 
@@ -629,19 +611,19 @@ bool VideoEncoder::Finalize()
     if (!m_Initialized)
         return true;
 
-    // Flush encoder
     avcodec_send_frame(m_pCodecCtx, nullptr);
 
-    if (m_pPacket)
+    AVPacket* pkt = av_packet_alloc();
+    if (pkt)
     {
-        av_packet_unref(m_pPacket);
-
         int ret = 0;
-        while ((ret = avcodec_receive_packet(m_pCodecCtx, m_pPacket)) >= 0)
+        while ((ret = avcodec_receive_packet(m_pCodecCtx, pkt)) >= 0)
         {
-            WritePacket(m_pPacket);
-            av_packet_unref(m_pPacket);
+            WritePacket(pkt);
+            av_packet_unref(pkt);
         }
+
+        av_packet_free(&pkt);
     }
 
     if (m_pFormatCtx)
@@ -651,33 +633,26 @@ bool VideoEncoder::Finalize()
             avio_closep(&m_pFormatCtx->pb);
     }
 
-    if (m_pCodecCtx)
-        avcodec_free_context(&m_pCodecCtx);
-    if (m_pFormatCtx)
-        avformat_free_context(m_pFormatCtx);
-    if (m_pHWFramesCtx)
-        av_buffer_unref(&m_pHWFramesCtx);
-    if (m_pHWDeviceCtx)
-        av_buffer_unref(&m_pHWDeviceCtx);
-
-    if (m_pPacket)
-    {
-        av_packet_free(&m_pPacket);
-        m_pPacket = nullptr;
-    }
+    if (m_pCodecCtx)        avcodec_free_context(&m_pCodecCtx);
+    if (m_pFormatCtx)       avformat_free_context(m_pFormatCtx);
+    if (m_pHWFramesCtx)     av_buffer_unref(&m_pHWFramesCtx);
+    if (m_pHWDeviceCtx)     av_buffer_unref(&m_pHWDeviceCtx);
 
     m_pCachedInputTex.Reset();
     m_pInputSRV.Reset();
+
     m_pOutputUAV_Y.Reset();
     m_pOutputUAV_UV.Reset();
     m_pConvertCS.Reset();
     m_pConvertConstants.Reset();
     m_pP010Texture.Reset();
     m_pD3D11Device3.Reset();
+
     m_pD3D11Context.Reset();
     m_pD3D11Device.Reset();
 
     m_Initialized = false;
+
     std::cout << "Encoder finalized\n";
     return true;
 }
