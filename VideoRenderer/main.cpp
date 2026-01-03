@@ -8,16 +8,15 @@
 
 int main()
 {
+    std::cout << "=== VIDEO RENDERER ===\n\n";
+    
+    int n;
     const uint16_t width = 3840;
     const uint16_t height = 2160;
     const uint8_t fps = 60;
 
-    int n;
     do
     {
-        system("cls");
-
-        std::cout << "=== VIDEO RENDERER ===\n\n";
         std::cout << "Enter slide number: ";
         std::cin >> n;
 
@@ -39,7 +38,7 @@ int main()
 
         app.Run();
 
-        std::cout << "\nVideo saved to: " << output << "\n\n";
+        std::cout << "\nVideo saved to: " << output << "\n\n\n\n";
 
         delete pSlide;
     }

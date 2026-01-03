@@ -1,0 +1,4 @@
+Header = BuildingData.cpp
+Duration = 8
+CodeDuration = 2.5
+bg = 2

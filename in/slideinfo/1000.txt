@@ -1,0 +1,12 @@
+Header = C++
+Duration = 20
+CodeDuration = 7.5
+bg = 2
+FontSize = 80
+Open
+Close
+
+Classes = string, regex
+Functions = regex_replace, FindAndReplace
+Params = str, findSubstr, replaceSubstr
+MemberVars = std

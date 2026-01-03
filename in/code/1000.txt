@@ -1,0 +1,12 @@
+#include <string>
+#include <regex>
+
+std::string FindAndReplace
+(
+	std::string str,
+	std::string findSubstr,
+	std::string replaceSubstr
+)
+{
+	return std::regex_replace(str, std::regex(findSubstr), replaceSubstr);
+}
