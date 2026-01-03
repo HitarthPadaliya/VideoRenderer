@@ -1,0 +1,8 @@
+Header = mat_SquareBorder_Selected
+Duration = 10
+CodeDuration = 4.5
+Open
+
+Params = BorderWidth, ObjectScale, BorderColor, BackgroundColor, UV
+LocalVars = BorderX, BorderY, IsBorderX, IsBorderY
+MemberVars = x, y

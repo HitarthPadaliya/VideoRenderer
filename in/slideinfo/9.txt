@@ -1,0 +1,6 @@
+Header = PlayerCamera.cpp
+Duration = 15
+CodeDuration = 9.5
+
+Functions = MouseSelect, Cast, GetRayPosition, SelectEntity
+LocalVars = ObjectParams, RayPosition, Selectable

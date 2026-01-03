@@ -1,0 +1,7 @@
+Header = PlayerCamera.h / PlayerCamera.cpp
+Duration = 15
+CodeDuration = 9.5
+
+Functions = MouseSelect, MouseHover, SetupPlayerInputComponent, BindAction
+Params = PlayerInputComponent
+MemberVars = Input, LeftClickAction

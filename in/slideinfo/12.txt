@@ -1,0 +1,9 @@
+Header = mat_SquareBorder_Hovered
+Duration = 15
+CodeDuration = 6.5
+Close
+
+Functions = fmod, lerp
+Params = BorderWidth, ObjectScale, BorderColor, BackgroundColor, UV, DashRepeat, DashGap
+LocalVars = BorderX, BorderY, IsInBorderX, IsInBorderY, DashMaskX, DashMaskY, IsDashedBorder
+MemberVars = x, y

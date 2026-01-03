@@ -9,7 +9,6 @@
 #include <wrl/client.h>
 
 #include <iostream>
-#include <string>
 #include <vector>
 
 #include "SyntaxHighlighter.h"
@@ -84,6 +83,8 @@ class Renderer
 
         Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pHeaderLayout;
         Microsoft::WRL::ComPtr<IDWriteTextLayout> m_pCodeLayout;
+
+        Slide* m_pSlide;
 
         D2D1_POINT_2F m_HeaderPosition;
         std::wstring m_Header;

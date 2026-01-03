@@ -1,0 +1,6 @@
+Header = Selectable.cpp
+Duration = 10
+CodeDuration = 2.5
+
+Functions = BeginPlay, SetSelectionState
+MemberVars = Super

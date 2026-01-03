@@ -1,0 +1,26 @@
+ESelectionState ASelectable::GetSelectionState()
+{
+    return SelectionState;
+}
+
+void ASelectable::SetSelectionState(ESelectionState NewSelectionState)
+{
+    SelectionState = NewSelectionState;
+
+	switch (SelectionState)
+    {
+		case ESelectionState::None:
+            SelectionMesh->SetVisibility(false, false);
+            break;
+
+		case ESelectionState::Hovered:
+            SelectionMesh->SetVisibility(true, false);
+            SelectionMesh->SetMaterial(0, HoveredMaterial);
+            break;
+
+		case ESelectionState::Selected:
+            SelectionMesh->SetVisibility(true, false);
+            SelectionMesh->SetMaterial(0, SelectedMaterial);
+            break;
+    }
+}

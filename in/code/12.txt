@@ -1,0 +1,15 @@
+float BorderX = BorderWidth / ObjectScale.x;
+float BorderY = BorderWidth / ObjectScale.y;
+
+bool IsInBorderX = UV.x < BorderX || UV.x > 1-BorderX;
+bool IsInBorderY = UV.y < BorderY || UV.y > 1-BorderY;
+
+if (IsInBorderX && IsInBorderY)
+    return BorderColor;
+
+float DashMaskX = (fmod(UV.y * DashRepeat, 1.0) > DashGap) ? 1.0 : 0.0;
+float DashMaskY = (fmod(UV.x * DashRepeat, 1.0) > DashGap) ? 1.0 : 0.0;
+
+float IsDashedBorder = (IsInBorderX * DashMaskX) + (IsInBorderY * DashMaskY);
+
+return lerp(BackgroundColor, BorderColor, IsDashedBorder);

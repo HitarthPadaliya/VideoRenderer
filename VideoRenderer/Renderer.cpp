@@ -51,6 +51,8 @@ bool Renderer::Initialize(Slide* pSlide)
         return false;
     }
 
+    m_pSlide = pSlide;
+
     if (!CreateDevices())           return false;
     if (!CreateRenderTargets())     return false;
     if (!CreateD2DTargets())        return false;
@@ -74,7 +76,7 @@ bool Renderer::Initialize(Slide* pSlide)
     m_Code = pSlide->m_Code;
 
     DWRITE_TEXT_METRICS mcode {};
-    m_pCodeLayout = GetTextMetrics(&mcode, pSlide->m_Code);
+    m_pCodeLayout = GetTextMetrics(&mcode, pSlide->m_Code, L"Consolas ligaturized v3", pSlide->m_FontSize);
     m_CodePosition = D2D1::Point2F
     (
         (3840 - mcode.width) * 0.5f - mcode.left,
@@ -741,12 +743,16 @@ Microsoft::WRL::ComPtr<IDWriteTextLayout> Renderer::GetTextMetrics
 
 bool Renderer::LoadBackgroundTexture()
 {
+    std::wstring file = L"../in/bg";
+    file += std::to_wstring(m_pSlide->m_BGNo);
+    file += L".png";
+
     Microsoft::WRL::ComPtr<ID3D11Resource> texRes;
     HRESULT hr = DirectX::CreateWICTextureFromFile
     (
         m_pD3DDevice.Get(),
         m_pD3DContext.Get(),
-        L"../in/bg.png",
+        file.c_str(),
         texRes.GetAddressOf(),
         m_pBackgroundSRV.GetAddressOf()
     );
@@ -769,12 +775,16 @@ bool Renderer::LoadBackgroundTexture()
 
 bool Renderer::LoadBlurredTexture()
 {
+    std::wstring file = L"../in/bg";
+    file += std::to_wstring(m_pSlide->m_BGNo);
+    file += L"_blurred.png";
+
     Microsoft::WRL::ComPtr<ID3D11Resource> texRes;
     HRESULT hr = DirectX::CreateWICTextureFromFile
     (
         m_pD3DDevice.Get(),
         m_pD3DContext.Get(),
-        L"../in/bg_blurred.png",
+        file.c_str(),
         texRes.GetAddressOf(),
         m_pBlurredSRV.GetAddressOf()
     );
@@ -847,7 +857,7 @@ void Renderer::DrawTextDecoder(const D2D1::ColorF& /*color*/, float animProgress
     if (!m_pCodeLayout)
         return;
 
-    CreateTextFormat(L"Consolas ligaturized v3", 72.0f, DWRITE_FONT_WEIGHT_NORMAL);
+    CreateTextFormat(L"Consolas ligaturized v3", m_pSlide->m_FontSize, DWRITE_FONT_WEIGHT_NORMAL);
     if (!m_pCurrentTextFormat)
         return;
 

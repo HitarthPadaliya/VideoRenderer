@@ -1,4 +1,4 @@
 Header = Selectable.h
 Duration = 10
-CodeDuration = 3
+CodeDuration = 4
 Open

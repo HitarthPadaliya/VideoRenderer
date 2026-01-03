@@ -1,0 +1,13 @@
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    UInputAction* LeftClickAction;
+
+private:
+    void MouseSelect();
+    void MouseHover();
+
+void APlayerCamera::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    Input->BindAction(LeftClickAction, ETriggerEvent::Completed, this,
+        &APlayerCamera::MouseSelect);
+}

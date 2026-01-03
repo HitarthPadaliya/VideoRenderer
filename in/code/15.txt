@@ -1,0 +1,18 @@
+UCLASS()
+class AOE_API UBuildingData : public UDataAsset
+{
+	GENERATED_BODY()
+	
+    public:
+		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building")
+		FName DisplayName = L"New Building";
+
+		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building")
+		int ID = 0;
+
+		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building")
+		FVector2D Dimensions;
+
+		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building")
+		TSubclassOf<ABuilding> BuildingBP;
+};

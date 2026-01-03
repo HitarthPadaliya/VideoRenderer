@@ -1,0 +1,12 @@
+void APlayerCamera::MouseSelect()
+{
+    FCollisionObjectQueryParams ObjectParams;
+    FVector RayPosition;
+
+    ASelectable* Selectable = Cast<ASelectable>(GetRayPosition(ObjectParams,
+        RayPosition));
+    if (Selectable != nullptr)
+        SelectEntity(Selectable);
+    else
+        SelectEntity(nullptr);
+}

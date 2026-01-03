@@ -189,6 +189,8 @@ class SyntaxHighlighter
 			L"signed",
 			L"unsigned",
 			L"float",
+			L"float2",
+			L"float3",
 			L"double",
 			L"void",
 			L"size_t",
@@ -256,7 +258,8 @@ class SyntaxHighlighter
 			L"EditAnywhere",
 			L"VisibleAnywhere",
 			L"BlueprintReadWrite",
-			L"BlueprintReadOnly"
+			L"BlueprintReadOnly",
+			L"GENERATED_BODY"
 		};
 
 		std::unordered_set<std::wstring> m_Preprocessor =

@@ -1,0 +1,7 @@
+Header = BuildingData.h
+Duration = 20
+CodeDuration = 6.5
+Open
+bg = 2
+
+MemberVars = DisplayName, ID, Dimensions, BuildingBP

@@ -1,0 +1,9 @@
+Header = mat_CircularBorder_Hovered
+Duration = 15
+CodeDuration = 6.5
+Close
+
+Functions = distance, atan2, frac, fmod, lerp, min
+Params = BorderWidth, ObjectScale, BorderColor, BackgroundColor, UV, DashGap, DashRepeat
+LocalVars = Border, Center, Distance, Delta, Theta, AngleNorm, DashRepeat, IsInRing, IsDashedRing, DashMask
+MemberVars = x, y

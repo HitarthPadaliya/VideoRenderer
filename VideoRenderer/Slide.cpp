@@ -25,6 +25,10 @@ Slide::Slide(const int& n)
             m_Duration = _wtof(AfterPrefix(line, L"Duration = ").c_str());
         else if (line.starts_with(L"CodeDuration = "))
             m_CodeDuration = _wtof(AfterPrefix(line, L"CodeDuration = ").c_str());
+        else if (line.starts_with(L"FontSize = "))
+            m_FontSize = _wtof(AfterPrefix(line, L"FontSize = ").c_str());
+        else if (line.starts_with(L"bg = "))
+            m_BGNo = _wtoi(AfterPrefix(line, L"bg = ").c_str());
         else if (line.starts_with(L"Open"))
             m_bOpenWindow = true;
         else if (line.starts_with(L"Close"))

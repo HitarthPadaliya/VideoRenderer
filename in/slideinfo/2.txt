@@ -1,5 +1,5 @@
 Header = Selectable.h
-Duration = 8
-CodeDuration = 5
+Duration = 15
+CodeDuration = 9.5
 
 MemberVars = SceneRoot, SelectionMesh

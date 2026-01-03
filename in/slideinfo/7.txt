@@ -1,0 +1,9 @@
+Header = PlayerCamera.h / PlayerCamera.cpp
+Duration = 45
+CodeDuration = 29.5
+FontSize = 50
+
+Functions = GetRayPosition, GetWorld, GetFirstPlayerController, GetMousePosition, DeprojectScreenPositionToWorld, AddIgnoredActor, LineTraceSingleByObjectType, GetActor
+Params = ObjectParams, RayPosition
+LocalVars = HitResult, PC, XMouse, YMouse, WorldOrigin, WorldDirection, TraceStart, TraceEnd, CollisionParams, bHit
+MemberVars = ImpactPoint

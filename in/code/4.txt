@@ -1,7 +1,16 @@
-void ABuildingManager::UpdatePreviewLocation(FVector RayPosition)
-{
-    if (PreviewBuilding != nullptr)
-        return;
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Selectable")
+    UMaterial* HoveredMaterial;
 
-    PreviewBuilding->SetActorLocation(RayPosition, false, nullptr, ETeleportType::None);
-}
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Selectable")
+    UMaterial* SelectedMaterial;
+
+private:
+    ESelectionState SelectionState;
+
+public:
+    UFUNCTION(BlueprintCallable)
+    void SetSelectionState(ESelectionState NewSelectionState);
+
+    UFUNCTION(BlueprintPure)
+    ESelectionState GetSelectionState();

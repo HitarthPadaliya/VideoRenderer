@@ -1,0 +1,17 @@
+void APlayerCamera::MouseHover()
+{
+    FCollisionObjectQueryParams ObjectParams;
+    FVector RayPosition;
+
+    ASelectable* Selectable = Cast<ASelectable>(GetRayPosition(ObjectParams,
+        RayPosition));
+    if (Selectable != nullptr)
+        HoverEntity(Selectable);
+    else
+        HoverEntity(nullptr);
+}
+
+void APlayerCamera::Tick(float DeltaTime)
+{
+    MouseHover();
+}

@@ -1,0 +1,9 @@
+float Border = BorderWidth / min(ObjectScale.x, ObjectScale.y);
+float2 Center = float2(0.5, 0.5);
+
+float d = distance(UV, Center);
+
+if (d < 0.5 && d > 0.5-Border)
+    return BorderColor;
+else
+    return BackgroundColor;

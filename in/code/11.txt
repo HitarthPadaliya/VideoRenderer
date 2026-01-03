@@ -1,0 +1,10 @@
+float BorderX = BorderWidth / ObjectScale.x;
+float BorderY = BorderWidth / ObjectScale.y;
+
+bool IsBorderX = UV.x < BorderX || UV.x > 1-BorderX;
+bool IsBorderY = UV.y < BorderY || UV.y > 1-BorderY;
+
+if (IsBorderX || IsBorderY)
+    return BorderColor;
+else
+    return BackgroundColor;

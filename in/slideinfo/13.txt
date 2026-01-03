@@ -1,0 +1,9 @@
+Header = mat_CircularBorder_Selected
+Duration = 10
+CodeDuration = 3.5
+Open
+
+Functions = distance
+Params = BorderWidth, ObjectScale, BorderColor, BackgroundColor, UV
+LocalVars = Border, Center, d
+MemberVars = x, y

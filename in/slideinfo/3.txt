@@ -1,5 +1,5 @@
 Header = Selectable.cpp
-Duration = 35.5
+Duration = 35
 CodeDuration = 23.5
 
 Classes = ConstructorHelpers

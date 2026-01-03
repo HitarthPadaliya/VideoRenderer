@@ -1,0 +1,30 @@
+public:
+    AActor* GetRayPosition(FCollisionObjectQueryParams ObjectParams, FVector& RayPosition);
+
+AActor* APlayerCamera::GetRayPosition(FCollisionObjectQueryParams ObjectParams, FVector& RayPosition)
+{
+    FHitResult HitResult;
+    APlayerController* PC = GetWorld()->GetFirstPlayerController();
+
+    float XMouse, YMouse;
+    if (PC->GetMousePosition(XMouse, YMouse))
+    {
+        FVector WorldOrigin, WorldDirection;
+        if (!PC->DeprojectScreenPositionToWorld(XMouse, YMouse, WorldOrigin, WorldDirection))
+            return nullptr;
+
+        FVector TraceStart = WorldOrigin;
+        FVector TraceEnd = TraceStart + (WorldDirection * 10000.0f);
+        FCollisionQueryParams CollisionParams;
+        CollisionParams.AddIgnoredActor(this);
+        bool bHit = GetWorld()->LineTraceSingleByObjectType(HitResult, TraceStart, TraceEnd, ObjectParams, CollisionParams);
+
+        if (bHit)
+        {
+            RayPosition = HitResult.ImpactPoint;
+            return HitResult.GetActor();
+        }
+    }
+
+    return nullptr;
+}

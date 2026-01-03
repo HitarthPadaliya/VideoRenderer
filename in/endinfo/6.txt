@@ -1,0 +1,3 @@
+WindowX = 1981.37
+WindowY = 805.828
+HeaderY = 737.184

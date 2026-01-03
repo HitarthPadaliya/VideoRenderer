@@ -1,0 +1,8 @@
+Header = Selectable.cpp
+Duration = 30
+CodeDuration = 21.5
+FontSize = 60
+
+Functions = GetSelectionState, SetSelectionState, SetVisibility, SetMaterial
+Params = NewSelectionState
+MemberVars = SelectionState, SelectionMesh, HoveredMaterial, Selectable

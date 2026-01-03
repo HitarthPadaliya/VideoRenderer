@@ -18,6 +18,8 @@ class Slide
         float m_Duration        = 0.0f;
         float m_CodeDuration    = 0.0f;
         int m_SlideNo           = 1;
+        int m_BGNo              = 1;
+        float m_FontSize        = 72.0f;
 
         std::unordered_set<std::wstring> m_Classes;
         std::unordered_set<std::wstring> m_Macros;

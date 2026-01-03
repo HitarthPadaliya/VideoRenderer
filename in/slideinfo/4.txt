@@ -1,0 +1,7 @@
+Header = Selectable.h
+Duration = 25
+CodeDuration = 14.5
+
+Functions = SetSelectionState, GetSelectionState
+Params = NewSelectionState
+MemberVars = HoveredMaterial, SelectedMaterial, SelectionState

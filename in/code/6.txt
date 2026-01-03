@@ -1,0 +1,6 @@
+void ASelectable::BeginPlay()
+{
+    Super->BeginPlay();
+
+    SetSelectionState(ESelectionState::None);
+}
