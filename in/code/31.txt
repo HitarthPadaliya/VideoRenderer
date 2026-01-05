@@ -1,0 +1,15 @@
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    UInputMappingContext* BuildingMapping;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    UInputAction* QKey;
+
+private:
+    bool bBuildingMode;
+
+	void CreatePreviewBuilding();
+    void UpdatePreviewBuildingLocation();
+    void DestroyPreviewBuilding();
+
+    void Q();

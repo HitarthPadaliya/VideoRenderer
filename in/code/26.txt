@@ -1,0 +1,12 @@
+public:
+    UFUNCTION(BlueprintCallable)
+    void CreatePreviewBuilding(FVector RayPosition, FRotator Rotation, int BuildingID);
+
+    UFUNCTION(BlueprintCallable)
+    void UpdatePreviewLocation(FVector RayPosition);
+
+    UFUNCTION(BlueprintCallable)
+    bool ConfirmBuilding();
+
+    UFUNCTION(BlueprintCallable)
+    void DestroyPreviewBuilding();

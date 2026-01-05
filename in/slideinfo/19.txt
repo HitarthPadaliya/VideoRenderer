@@ -1,0 +1,8 @@
+Header = BuildingCollection.cpp
+Duration = 10
+CodeDuration = 2.5
+bg = 2
+
+Functions = GetBuildingData
+Params = ID
+MemberVars = BuildingDataArray

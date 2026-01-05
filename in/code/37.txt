@@ -1,0 +1,9 @@
+void APlayerCamera::Q()
+{
+    bBuildingMode = !bBuildingMode;
+
+    if (bBuildingMode)
+        CreatePreviewBuilding();
+    else
+        DestroyPreviewBuilding();
+}

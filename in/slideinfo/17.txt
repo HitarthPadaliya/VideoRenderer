@@ -1,0 +1,8 @@
+Header = BuildingCollection.h
+Duration = 20
+CodeDuration = 12.5
+bg = 2
+
+Functions = SortByID, GetBuildingData
+Params = ID
+MemberVars = BuildingDataArray

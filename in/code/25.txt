@@ -1,0 +1,13 @@
+UCLASS()
+class AOE_API ABuildingManager : public AActor
+{
+    GENERATED_BODY()
+
+    public:
+        UPROPERTY(EditAnywhere, BlueprintReadWrite)
+        UBuildingCollection* BuildingCollection;
+        
+    private:
+        ABuilding* PreviewBuilding;
+        UBuildingData* PreviewBuildingData;
+};

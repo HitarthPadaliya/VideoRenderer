@@ -1,0 +1,11 @@
+bool ABuildingManager::ConfirmBuilding()
+{
+    if (PreviewBuilding == nullptr)
+        return false;
+
+    PreviewBuilding->SetPlacementState(EPlacementState::Placed);
+
+    PreviewBuilding = nullptr;
+    PreviewBuildingData = nullptr;
+    return true;
+}

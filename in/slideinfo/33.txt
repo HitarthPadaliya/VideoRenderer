@@ -1,0 +1,8 @@
+Header = PlayerCamera.cpp
+Duration = 15
+CodeDuration = 6
+bg = 2
+
+Functions = SetupPlayerInputComponent, AddMappingContext, BindAction, Q
+Params = PlayerInputComponent
+MemberVars = BuildingMapping, QKey

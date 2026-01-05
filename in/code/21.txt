@@ -1,0 +1,21 @@
+UCLASS()
+class AOE_API ABuilding : public ASelectable
+{
+	GENERATED_BODY()
+
+	public:
+        UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+        UStaticMeshComponent* BuildingMesh;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+        UBuildingData* BuildingData;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+        UMaterialInstance* NormalMaterial;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+        UMaterialInstance* TranslucentMaterial;
+
+		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Building")
+        UMaterialInstance* TranslucentRedMaterial;
+};

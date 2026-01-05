@@ -1,0 +1,7 @@
+Header = BuildingManager.h
+Duration = 15
+CodeDuration = 6
+bg = 2
+
+Functions = CreatePreviewBuilding, UpdatePreviewLocation, ConfirmBuilding, DestroyPreviewBuilding
+Params = RayPosition, Rotation, BuildingID

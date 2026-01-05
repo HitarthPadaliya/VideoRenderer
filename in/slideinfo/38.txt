@@ -1,0 +1,9 @@
+Header = PlayerCamera.cpp
+Duration = 10
+CodeDuration = 4.5
+bg = 2
+Close
+
+Functions = BeginPlay, GetBuildingManager, Tick, UpdatePreviewBuildingLocation, GetWorld
+Params = DeltaTime
+MemberVars = BuildingManager, bBuildingMode

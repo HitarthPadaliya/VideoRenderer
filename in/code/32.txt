@@ -1,0 +1,14 @@
+public:
+    UFUNCTION(BlueprintPure)
+    ABuildingManager* GetBuildingManager(UWorld* World);
+
+
+ABuildingManager* APlayerCamera::GetBuildingManager(UWorld* World)
+{
+    for (TActorIterator<ABuildingManager> It(World); It; ++It)
+    {
+        return *It;
+    }
+
+    return nullptr;
+}

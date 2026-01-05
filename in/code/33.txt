@@ -1,0 +1,6 @@
+void APlayerCamera::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    // ...
+    Subsystem->AddMappingContext(BuildingMapping, 1);
+    Input->BindAction(QKey, ETriggerEvent::Completed, this, &APlayerCamera::Q);
+}

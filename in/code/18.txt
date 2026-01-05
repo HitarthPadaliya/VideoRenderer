@@ -1,0 +1,13 @@
+#include "BuildingCollection.h"
+#include "BuildingData.h"
+#include "Algo/Sort.h"
+
+void UBuildingCollection::SortByID()
+{
+    Algo::Sort
+	(
+        BuildingDataArray,
+        [](const UBuildingData* A, const UBuildingData* B)
+        { return A->ID < B->ID; }
+    );
+}

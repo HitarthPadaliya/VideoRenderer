@@ -1,0 +1,6 @@
+void ABuildingManager::DestroyPreviewBuilding()
+{
+    PreviewBuilding->Destroy();
+    PreviewBuilding = nullptr;
+    PreviewBuildingData = nullptr;
+}

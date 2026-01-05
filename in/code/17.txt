@@ -1,0 +1,16 @@
+UCLASS()
+class AOE_API UBuildingCollection : public UDataAsset
+{
+    GENERATED_BODY()
+    
+	protected:
+        UPROPERTY(EditAnywhere, BlueprintReadOnly)
+        TArray<UBuildingData*> BuildingDataArray;
+
+	public:
+        UFUNCTION(BlueprintCallable)
+        void SortByID();
+
+		UFUNCTION(BlueprintCallable)
+        UBuildingData* GetBuildingData(int ID);
+};

@@ -1,0 +1,12 @@
+void APlayerCamera::BeginPlay()
+{
+    // ...
+    BuildingManager = GetBuildingManager(GetWorld());
+}
+
+void APlayerCamera::Tick(float DeltaTime)
+{
+    // ...
+    if (bBuildingMode)
+        UpdatePreviewBuildingLocation();
+}

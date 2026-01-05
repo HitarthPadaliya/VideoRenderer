@@ -1,0 +1,7 @@
+Header = Building.h
+Duration = 10
+CodeDuration = 3.5
+bg = 2
+
+Functions = MouseSelect
+MemberVars = LeftClickAction

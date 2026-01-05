@@ -1,0 +1,14 @@
+ABuilding::ABuilding()
+{
+    BuildingMesh = CreateDefaultSubobject<UStaticMeshComponent>("Building Mesh");
+    BuildingMesh->SetupAttachment(RootComponent);
+}
+
+void ABuilding::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (BuildingData != nullptr)
+        SelectionMesh->SetRelativeScale3D(FVector(BuildingData->Dimensions.X,
+            BuildingData->Dimensions.Y, 1.0f));
+}

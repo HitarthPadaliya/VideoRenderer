@@ -1,0 +1,4 @@
+UBuildingData* UBuildingCollection::GetBuildingData(int ID)
+{
+    return BuildingDataArray[ID];
+}

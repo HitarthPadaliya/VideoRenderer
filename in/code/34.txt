@@ -1,0 +1,12 @@
+void APlayerCamera::CreatePreviewBuilding()
+{
+    if (BuildingManager == nullptr)
+        return;
+
+    FCollisionObjectQueryParams ObjectParams;
+    ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
+    FVector RayPosition;
+
+    if (GetRayPosition(ObjectParams, RayPosition) != nullptr)
+        BuildingManager->CreatePreviewBuilding(RayPosition, FRotator::ZeroRotator, 0);
+}

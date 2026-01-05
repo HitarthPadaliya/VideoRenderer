@@ -1,0 +1,6 @@
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+    UInputAction* LeftClickAction;
+
+private:
+    void MouseSelect();

@@ -1,0 +1,8 @@
+Header = PlayerCamera.cpp
+Duration = 15
+CodeDuration = 5.5
+bg = 2
+
+Functions = UpdatePreviewLocation, UpdatePreviewBuildingLocation, AddObjectTypesToQuery, GetRayPosition
+LocalVars = ObjectParams, RayPosition
+MemberVars = BuildingManager

@@ -1,0 +1,6 @@
+private:
+    EPlacementState PlacementState;
+
+public:
+    UFUNCTION(BlueprintCallable)
+    void SetPlacementState(EPlacementState NewPlacementState);

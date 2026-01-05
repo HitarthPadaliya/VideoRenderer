@@ -1,0 +1,9 @@
+Header = BuildingManager.cpp
+Duration = 20
+CodeDuration = 9.5
+bg = 2
+
+Functions = CreatePreviewBuilding, GetBuildingData, GetWorld, SpawnActor
+Params = RayPosition, Rotation, BuildingID
+LocalVars = SpawnParams
+MemberVars = PreviewBuildingData, BuildingCollection, SpawnCollisionHandlingOverride, PreviewBuilding, BuildingBP

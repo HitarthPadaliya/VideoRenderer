@@ -1,0 +1,12 @@
+void ABuildingManager::CreatePreviewBuilding(FVector RayPosition,
+    FRotator Rotation, int BuildingID)
+{
+	PreviewBuildingData = BuildingCollection->GetBuildingData(BuildingID);
+
+	FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	PreviewBuilding = GetWorld()->SpawnActor<ABuilding>
+        (PreviewBuildingData->BuildingBP, RayPosition, Rotation, SpawnParams);
+}

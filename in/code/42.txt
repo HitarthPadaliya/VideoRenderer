@@ -1,0 +1,12 @@
+void APlayerCamera::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    // ...
+    Input->BindAction(LeftClickAction, ETriggerEvent::Completed, this,
+        &APlayerCamera::MouseSelect);
+}
+
+void APlayerCamera::MouseSelect()
+{   
+    if (bBuildingMode)
+        bBuildingMode = !BuildingManager->ConfirmBuilding();
+}

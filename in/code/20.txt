@@ -1,0 +1,7 @@
+UENUM(BlueprintType)
+enum class EPlacementState : uint8
+{
+    PlacementAllowed,
+    PlacementBlocked,
+    Placed
+};

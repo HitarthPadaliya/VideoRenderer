@@ -1,0 +1,5 @@
+ABuilding::ABuilding()
+{
+    // ...
+    BuildingMesh->SetCollisionObjectType(COLLISION_BUILDINGS);
+}

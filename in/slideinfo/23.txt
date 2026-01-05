@@ -1,0 +1,8 @@
+Header = Building.h
+Duration = 10
+CodeDuration = 2.5
+bg = 2
+
+Functions = SetPlacementState
+Params = NewPlacementState
+MemberVars = PlacementState

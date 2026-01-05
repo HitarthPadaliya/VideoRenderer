@@ -1,0 +1,1 @@
+#define COLLISION_BUILDINGS ECC_GameTraceChannel1

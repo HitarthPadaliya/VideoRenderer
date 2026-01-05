@@ -1,0 +1,9 @@
+Header = BuildingCollection.cpp
+Duration = 15
+CodeDuration = 7.5
+bg = 2
+
+Classes = Algo
+Functions = SortByID, GetBuildingData, Sort
+Params = A, B
+MemberVars = ID, BuildingDataArray

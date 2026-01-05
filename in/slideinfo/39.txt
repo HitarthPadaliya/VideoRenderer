@@ -1,0 +1,5 @@
+Header = Building.h
+Duration = 6
+CodeDuration = 2
+bg = 2
+Open

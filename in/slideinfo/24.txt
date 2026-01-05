@@ -1,0 +1,8 @@
+Header = Building.cpp
+Duration = 10
+CodeDuration = 4.5
+bg = 2
+
+Functions = SetPlacementState, SetMaterial
+Params = NewPlacementState
+MemberVars = PlacementState, NormalMaterial, TranslucentMaterial, TranslucentRedMaterial, BuildingMesh

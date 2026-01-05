@@ -1,0 +1,19 @@
+void ABuilding::SetPlacementState(EPlacementState NewPlacementState)
+{
+    PlacementState = NewPlacementState;
+
+    switch (PlacementState)
+    {
+        case EPlacementState::Placed:
+            BuildingMesh->SetMaterial(0, NormalMaterial);
+            break;
+
+		case EPlacementState::PlacementAllowed:
+            BuildingMesh->SetMaterial(0, TranslucentMaterial);
+            break;
+
+		case EPlacementState::PlacementBlocked:
+            BuildingMesh->SetMaterial(0, TranslucentRedMaterial);
+            break;
+    }
+}

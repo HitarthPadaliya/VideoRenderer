@@ -1,0 +1,7 @@
+Header = BuildingManager.cpp
+Duration = 15
+CodeDuration = 5.5
+bg = 2
+
+Functions = ConfirmBuilding, SetPlacementState
+MemberVars = PreviewBuilding, PreviewBuildingData
